@@ -1,0 +1,18 @@
+# Secret env files (keep only examples in git)
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+
+node_modules/
+dist/
+uploads/*
+!uploads/.gitkeep
+*.log
+*.gz
+*.tar
+.DS_Store
+venv/
+..bfg-report/

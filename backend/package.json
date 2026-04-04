@@ -1,0 +1,35 @@
+{
+  "name": "audio-upload-backend",
+  "version": "1.0.0",
+  "description": "Backend API for secure audio file upload application",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "init-db": "node src/models/initDb.js",
+    "reset-test-data": "node scripts/reset-for-testing.js"
+  },
+  "keywords": [
+    "audio",
+    "upload",
+    "authentication",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "node-id3": "^0.2.9",
+    "nodemailer": "^7.0.12",
+    "pg": "^8.11.3",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

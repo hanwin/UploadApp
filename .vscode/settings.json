@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git --no-pager status --short && echo '---' && ls -la && echo '---' && git --no-pager ls-files \\| rg '\\^\\\\\\.env\\$\\|\\\\\\.env\\\\\\.example\\$\\|\\^backend/\\\\\\.env\\$\\|\\^frontend/\\\\\\.env\\$' \\|\\| true$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
