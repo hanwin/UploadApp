@@ -20,6 +20,8 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:81')
   .split(',')
   .map(s => s.trim());
 
+app.set('trust proxy', 1);
+
 const io = new Server(httpServer, {
   cors: {
     origin: allowedOrigins,
