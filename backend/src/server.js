@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 require('dotenv').config();
 
 const pool = require('./models/db');
+const { ensureTables } = require('./models/initDb');
 const authRoutes = require('./routes/auth');
 const audioRoutes = require('./routes/audio');
 const userRoutes = require('./routes/users');
@@ -88,8 +89,12 @@ app.use((err, req, res, next) => {
 
 // Test database connection before starting server
 pool.query('SELECT NOW()')
-  .then(() => {
+  .then(async () => {
     console.log('✓ Database connected');
+    
+    // Ensure all tables exist before starting
+    await ensureTables();
+    
     httpServer.listen(PORT, () => {
       // Disable request timeout for large file uploads (Node.js 18 default is 300s)
       httpServer.requestTimeout = 0;
