@@ -5,12 +5,7 @@ const { getTokenFromRequest } = require('./auth');
 // HTML5 audio elements can't send Authorization headers
 const streamAuthMiddleware = (req, res, next) => {
   try {
-    let token = getTokenFromRequest(req);
-    
-    // Fall back to query parameter for streaming (required for HTML5 audio)
-    if (!token && req.query.token) {
-      token = req.query.token;
-    }
+    const token = getTokenFromRequest(req);
     
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });

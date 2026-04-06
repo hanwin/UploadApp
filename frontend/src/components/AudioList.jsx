@@ -454,7 +454,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
                 </Box>
 
                 <AudioPlayer 
-                  src={`${audioAPI.getStreamUrl(file.id)}?token=${localStorage.getItem('token')}`}
+                  src={audioAPI.getStreamUrl(file.id)}
                 />
               </ListItem>
             ))}
