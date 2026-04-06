@@ -150,10 +150,13 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
   const loadFolders = async () => {
     try {
       const response = await folderAPI.getAll();
-      setFolders(response.data);
+      const sorted = [...response.data].sort((a, b) =>
+        (a.original_name || a.disk_name).localeCompare(b.original_name || b.disk_name, 'sv')
+      );
+      setFolders(sorted);
       // Set first folder as default selected (use disk_name)
-      if (response.data.length > 0 && !selectedFolder) {
-        setSelectedFolder(response.data[0].disk_name);
+      if (sorted.length > 0 && !selectedFolder) {
+        setSelectedFolder(sorted[0].disk_name);
       }
     } catch (err) {
       console.error('Failed to load folders:', err);
