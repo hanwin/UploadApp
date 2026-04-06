@@ -247,6 +247,15 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     ? files.filter(f => f.folder === selectedFolder)
     : files;
 
+  const selectedFolderDisplayName = (() => {
+    if (!selectedFolder) {
+      return user.folders && user.folders[0] ? user.folders[0] : '';
+    }
+
+    const folderObj = folders.find(f => f.disk_name === selectedFolder);
+    return folderObj ? (folderObj.original_name || folderObj.disk_name) : selectedFolder;
+  })();
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -301,7 +310,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
       <Card sx={{ flexGrow: 1, order: 1 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AudioFile /> Ljudfiler - {selectedFolder || (user.folders && user.folders[0]) || ''}
+            <AudioFile /> Ljudfiler - {selectedFolderDisplayName}
           </Typography>
           
           <Typography variant="body2" color="text.secondary" gutterBottom>
