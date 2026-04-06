@@ -14,5 +14,6 @@ uploads/*
 *.gz
 *.tar
 .DS_Store
+.vscode/
 venv/
 ..bfg-report/
