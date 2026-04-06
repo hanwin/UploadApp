@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { validatePassword } from '../utils/passwordValidator';
 import {
   Container,
   Card,
@@ -37,8 +38,9 @@ function ResetPassword() {
       return;
     }
 
-    if (password.length < 12) {
-      showError('Lösenordet måste vara minst 12 tecken långt');
+    const pwError = validatePassword(password);
+    if (pwError) {
+      showError(pwError);
       return;
     }
 

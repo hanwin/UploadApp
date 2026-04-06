@@ -1,5 +1,6 @@
 const pool = require('../models/db');
 const bcrypt = require('bcryptjs');
+const { validatePassword } = require('../utils/passwordValidator');
 
 // Get all users (superadmin only)
 const getAllUsers = async (req, res) => {
@@ -53,8 +54,9 @@ const createUser = async (req, res) => {
       return res.status(400).json({ error: 'Invalid role. Must be user or admin' });
     }
 
-    if (password.length < 12) {
-      return res.status(400).json({ error: 'Lösenordet måste vara minst 12 tecken långt' });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     // Check if username (case-insensitive) or email already exists
@@ -258,8 +260,9 @@ const updateOwnProfile = async (req, res) => {
         return res.status(401).json({ error: 'Felaktigt nuvarande lösenord' });
       }
 
-      if (newPassword.length < 12) {
-        return res.status(400).json({ error: 'Lösenordet måste vara minst 12 tecken långt' });
+      const passwordError = validatePassword(newPassword);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
       }
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -332,8 +335,9 @@ const updateUserProfile = async (req, res) => {
 
     // Update password if provided
     if (password) {
-      if (password.length < 12) {
-        return res.status(400).json({ error: 'Lösenordet måste vara minst 12 tecken långt' });
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        return res.status(400).json({ error: passwordError });
       }
 
       const hashedPassword = await bcrypt.hash(password, 10);

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { validatePassword } from '../utils/passwordValidator';
 import {
   Card,
   CardContent,
@@ -135,6 +136,12 @@ function UserManagement({ user, onViewAsUser }) {
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
+
+    const pwError = validatePassword(formData.password);
+    if (pwError) {
+      showError(pwError);
+      return;
+    }
 
     try {
       let folderList = formData.folders;

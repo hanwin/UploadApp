@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { validatePassword } from '../utils/passwordValidator';
 import {
   Dialog,
   DialogTitle,
@@ -76,6 +77,15 @@ function ProfileDialog({ open, onClose, user, onUpdate }) {
         showError('Lösenorden matchar inte');
         setLoading(false);
         return;
+      }
+
+      if (formData.newPassword) {
+        const pwError = validatePassword(formData.newPassword);
+        if (pwError) {
+          showError(pwError);
+          setLoading(false);
+          return;
+        }
       }
 
       const updateData = {};

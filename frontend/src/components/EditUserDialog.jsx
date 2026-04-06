@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { validatePassword } from '../utils/passwordValidator';
 import {
   Dialog,
   DialogTitle,
@@ -88,6 +89,15 @@ function EditUserDialog({ open, onClose, user, onUpdate }) {
         showError('Lösenorden matchar inte');
         setLoading(false);
         return;
+      }
+
+      if (formData.password) {
+        const pwError = validatePassword(formData.password);
+        if (pwError) {
+          showError(pwError);
+          setLoading(false);
+          return;
+        }
       }
 
       const updateData = {};

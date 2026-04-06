@@ -1,4 +1,5 @@
 const pool = require('./db');
+const { validatePassword } = require('../utils/passwordValidator');
 
 // Ensure all tables exist (idempotent, safe to call on every startup)
 const ensureTables = async () => {
@@ -92,8 +93,9 @@ const ensureSuperadmin = async () => {
     console.log('⚠ No ADMIN_PASSWORD environment variable set. Skipping superadmin creation.');
     return;
   }
-  if (adminPassword.length < 12) {
-    console.log('⚠ ADMIN_PASSWORD must be at least 12 characters. Skipping superadmin creation.');
+  const passwordError = validatePassword(adminPassword);
+  if (passwordError) {
+    console.log(`⚠ ADMIN_PASSWORD does not meet complexity requirements: ${passwordError} Skipping superadmin creation.`);
     return;
   }
 

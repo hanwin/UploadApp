@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pool = require('../models/db');
 const { sendPasswordResetEmail } = require('../services/emailService');
+const { validatePassword } = require('../utils/passwordValidator');
 
 const getAuthCookieOptions = () => ({
   httpOnly: true,
@@ -197,8 +198,9 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Token och nytt lösenord krävs' });
     }
 
-    if (password.length < 12) {
-      return res.status(400).json({ error: 'Lösenordet måste vara minst 12 tecken långt' });
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return res.status(400).json({ error: passwordError });
     }
 
     // Hash the provided token
