@@ -44,7 +44,10 @@ function FolderManagement({ user }) {
     try {
       setLoading(true);
       const response = await folderAPI.getAll();
-      setFolders(response.data);
+      const sorted = [...response.data].sort((a, b) =>
+        (a.original_name || a.disk_name).localeCompare(b.original_name || b.disk_name, 'sv')
+      );
+      setFolders(sorted);
     } catch (err) {
       showError('Kunde inte ladda mappar');
     } finally {
