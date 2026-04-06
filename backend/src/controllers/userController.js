@@ -70,9 +70,9 @@ const createUser = async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Folders are required (accept both 'folders' array and legacy 'folder' string)
+    // Folders are required for regular users (accept both 'folders' array and legacy 'folder' string)
     const folderList = folders || (req.body.folder ? [req.body.folder] : []);
-    if (folderList.length === 0) {
+    if (role === 'user' && folderList.length === 0) {
       return res.status(400).json({ error: 'At least one folder is required' });
     }
 
