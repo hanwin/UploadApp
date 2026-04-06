@@ -27,7 +27,7 @@ async function setUploadFolderPath(req, res, next) {
       folderName = req.query.folder || req.headers['x-folder-name'];
       if (folderName && (folderName.includes('..') || folderName.includes('/') || folderName.includes('\\'))) {
         debugLog('setUploadFolderPath: invalid folderName=' + folderName);
-        return res.status(400).json({ error: 'Invalid folder name' });
+        return res.status(400).json({ error: 'Ogiltigt mappnamn' });
       }
     } else {
       folderName = req.query.folder;
@@ -38,7 +38,7 @@ async function setUploadFolderPath(req, res, next) {
         );
         if (accessCheck.rows.length === 0) {
           debugLog('setUploadFolderPath: access denied to folderName=' + folderName);
-          return res.status(403).json({ error: 'Access denied to this folder' });
+          return res.status(403).json({ error: 'Åtkomst nekad till denna mapp' });
         }
       } else {
         const userFolders = await pool.query(
@@ -50,13 +50,13 @@ async function setUploadFolderPath(req, res, next) {
     }
     if (!folderName) {
       debugLog('setUploadFolderPath: no folder specified');
-      return res.status(400).json({ error: 'No folder specified' });
+      return res.status(400).json({ error: 'Ingen mapp angiven' });
     }
     // For admin/superadmin, use folder name as-is (no normalization)
     let folderPath = path.join(uploadsDir, folderName);
     if (!folderPath.startsWith(uploadsDir)) {
       debugLog('setUploadFolderPath: invalid folderPath=' + folderPath);
-      return res.status(400).json({ error: 'Invalid folder path' });
+      return res.status(400).json({ error: 'Ogiltig mappsökväg' });
     }
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
@@ -68,7 +68,7 @@ async function setUploadFolderPath(req, res, next) {
   } catch (error) {
     debugLog('setUploadFolderPath: error=' + error);
     console.error('Error determining upload destination:', error);
-    res.status(500).json({ error: 'Error determining upload destination' });
+    res.status(500).json({ error: 'Det gick inte att fastställa uppladdningsmål' });
   }
 }
 

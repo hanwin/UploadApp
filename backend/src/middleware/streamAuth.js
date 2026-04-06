@@ -8,14 +8,14 @@ const streamAuthMiddleware = (req, res, next) => {
     const token = getTokenFromRequest(req);
     
     if (!token) {
-      return res.status(401).json({ error: 'Access denied. No token provided.' });
+      return res.status(401).json({ error: 'Åtkomst nekad. Ingen token angiven.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Ogiltig token' });
   }
 };
 

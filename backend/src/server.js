@@ -86,7 +86,7 @@ app.use((err, req, res, next) => {
     return res.status(409).json({ error: err.message, filename });
   }
   
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: 'Något gick fel!' });
 });
 
 // Test database connection before starting server

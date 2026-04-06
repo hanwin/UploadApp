@@ -19,7 +19,7 @@ const register = async (req, res) => {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({ error: 'Alla fält är obligatoriska' });
     }
 
     // Username: no spaces allowed
@@ -42,9 +42,9 @@ const register = async (req, res) => {
     });
   } catch (error) {
     if (error.code === '23505') {
-      return res.status(400).json({ error: 'Username or email already exists' });
+      return res.status(400).json({ error: 'Användarnamn eller e-post finns redan' });
     }
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Serverfel' });
   }
 };
 
@@ -54,7 +54,7 @@ const login = async (req, res) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+      return res.status(400).json({ error: 'Användarnamn och lösenord krävs' });
     }
 
     // Get user by username (case-insensitive) OR email
@@ -64,7 +64,7 @@ const login = async (req, res) => {
     );
     
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Felaktigt användarnamn eller lösenord' });
     }
 
     const user = result.rows[0];
@@ -73,7 +73,7 @@ const login = async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      return res.status(401).json({ error: 'Felaktigt användarnamn eller lösenord' });
     }
 
     // Get user's folders
@@ -93,7 +93,7 @@ const login = async (req, res) => {
     res.cookie('auth_token', token, getAuthCookieOptions());
 
     res.json({
-      message: 'Login successful',
+      message: 'Inloggning lyckades',
       user: {
         id: user.id,
         username: user.username,
@@ -104,7 +104,7 @@ const login = async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Serverfel' });
   }
 };
 
@@ -125,7 +125,7 @@ const getProfile = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Användaren hittades inte' });
     }
 
     const foldersResult = await pool.query(
@@ -140,7 +140,7 @@ const getProfile = async (req, res) => {
 
     res.json(user);
   } catch (error) {
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Serverfel' });
   }
 };
 

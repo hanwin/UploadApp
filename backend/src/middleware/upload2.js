@@ -18,13 +18,13 @@ async function setUploadFolderPath(req, res, next) {
       folderName = req.query.folder || req.headers['x-folder-name'];
       if (folderName && (folderName.includes('..') || folderName.includes('/') || folderName.includes('\\'))) {
         debugLog('Invalid folder name: ' + folderName);
-        return res.status(400).json({ error: 'Invalid folder name' });
+        return res.status(400).json({ error: 'Ogiltigt mappnamn' });
       }
     } else {
       folderName = req.query.folder;
       if (!folderName) {
         debugLog('No folder specified for user');
-        return res.status(400).json({ error: 'No folder specified' });
+        return res.status(400).json({ error: 'Ingen mapp angiven' });
       }
     }
     // Spara originalnamn för GUI/databas
@@ -35,7 +35,7 @@ async function setUploadFolderPath(req, res, next) {
     const folderPath = path.join(uploadsDir, safeFolderName);
     if (!folderPath.startsWith(uploadsDir)) {
       debugLog('Invalid folder path: ' + folderPath);
-      return res.status(400).json({ error: 'Invalid folder path' });
+      return res.status(400).json({ error: 'Ogiltig mappsökväg' });
     }
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
@@ -46,7 +46,7 @@ async function setUploadFolderPath(req, res, next) {
     next();
   } catch (error) {
     debugLog('Error in setUploadFolderPath: ' + error);
-    res.status(500).json({ error: 'Error determining upload destination' });
+    res.status(500).json({ error: 'Det gick inte att fastställa uppladdningsmål' });
   }
 }
 

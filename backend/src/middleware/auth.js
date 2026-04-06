@@ -30,27 +30,27 @@ const authMiddleware = (req, res, next) => {
     const token = getTokenFromRequest(req);
     
     if (!token) {
-      return res.status(401).json({ error: 'Access denied. No token provided.' });
+      return res.status(401).json({ error: 'Åtkomst nekad. Ingen token angiven.' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Ogiltig token' });
   }
 };
 
 const adminMiddleware = (req, res, next) => {
   if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Access denied. Admin only.' });
+    return res.status(403).json({ error: 'Åtkomst nekad. Kräver administratörsbehörighet.' });
   }
   next();
 };
 
 const superadminMiddleware = (req, res, next) => {
   if (req.user.role !== 'superadmin') {
-    return res.status(403).json({ error: 'Access denied. Superadmin only.' });
+    return res.status(403).json({ error: 'Åtkomst nekad. Kräver superadmin-behörighet.' });
   }
   next();
 };

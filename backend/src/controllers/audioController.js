@@ -11,7 +11,7 @@ const uploadAudio = async (req, res) => {
     fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: called, user=' + (req.user && req.user.id) + ', role=' + (req.user && req.user.role) + '\n');
     if (!req.file) {
       fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: no file in req.file\n');
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: 'Ingen fil uppladdad' });
     }
 
     fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: file received, originalname=' + req.file.originalname + ', filename=' + req.file.filename + ', mimetype=' + req.file.mimetype + ', size=' + req.file.size + '\n');
@@ -28,7 +28,7 @@ const uploadAudio = async (req, res) => {
       folder = req.query.folder || req.body.folder;
       if (!folder) {
         fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: missing folder for admin/superadmin\n');
-        return res.status(400).json({ error: 'Folder is required' });
+        return res.status(400).json({ error: 'Mapp krävs' });
       }
     } else {
       fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: user upload, query.folder=' + req.query.folder + '\n');
@@ -41,7 +41,7 @@ const uploadAudio = async (req, res) => {
           [req.user.id, folder]
         );
         if (accessCheck.rows.length === 0) {
-          return res.status(403).json({ error: 'Access denied to this folder' });
+          return res.status(403).json({ error: 'Åtkomst nekad till denna mapp' });
         }
       } else {
         // Use first assigned folder
@@ -53,7 +53,7 @@ const uploadAudio = async (req, res) => {
       }
       if (!folder) {
         fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: no folder assigned to user\n');
-        return res.status(400).json({ error: 'No folder assigned to user' });
+        return res.status(400).json({ error: 'Ingen mapp tilldelad till användaren' });
       }
       fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: saving file info to DB, folder=' + folder + ', filePath=' + filePath + '\n');
     }
@@ -63,7 +63,7 @@ const uploadAudio = async (req, res) => {
     const canonicalMimeType = getCanonicalAudioMimeType(decodedOriginalName) || getCanonicalAudioMimeType(filename);
 
     if (!canonicalMimeType) {
-      return res.status(400).json({ error: 'Unsupported audio file type' });
+      return res.status(400).json({ error: 'Filtypen stöds inte' });
     }
 
     // Use folder name as-is (matches disk_name in folders table)
@@ -77,12 +77,12 @@ const uploadAudio = async (req, res) => {
 
     if (req.query.impersonatedUserId) {
       if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-        return res.status(403).json({ error: 'Only admins can impersonate uploads' });
+        return res.status(403).json({ error: 'Endast administratörer kan utföra uppladdningar som annan användare' });
       }
 
       const impersonatedUserId = Number.parseInt(req.query.impersonatedUserId, 10);
       if (!Number.isInteger(impersonatedUserId) || impersonatedUserId <= 0) {
-        return res.status(400).json({ error: 'Invalid impersonated user ID' });
+        return res.status(400).json({ error: 'Ogiltigt användar-ID' });
       }
 
       const impersonatedUserResult = await pool.query(
@@ -91,7 +91,7 @@ const uploadAudio = async (req, res) => {
       );
 
       if (impersonatedUserResult.rows.length === 0) {
-        return res.status(404).json({ error: 'Impersonated user not found' });
+        return res.status(404).json({ error: 'Användaren hittades inte' });
       }
 
       effectiveUserId = impersonatedUserId;
@@ -135,7 +135,7 @@ const uploadAudio = async (req, res) => {
     });
   } catch (error) {
     console.error('Upload error:', error);
-    res.status(500).json({ error: 'Error uploading file' });
+    res.status(500).json({ error: 'Det gick inte att ladda upp filen' });
   }
 }
 
@@ -162,7 +162,7 @@ const getUserAudioFiles = async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching files' });
+    res.status(500).json({ error: 'Det gick inte att hämta filer' });
   }
 };
 
@@ -179,7 +179,7 @@ const getAllAudioFiles = async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching files' });
+    res.status(500).json({ error: 'Det gick inte att hämta filer' });
   }
 };
 
@@ -208,7 +208,7 @@ const getUserFilesById = async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching files' });
+    res.status(500).json({ error: 'Det gick inte att hämta filer' });
   }
 };
 
@@ -221,19 +221,19 @@ const streamAudio = async (req, res) => {
     const result = await pool.query('SELECT * FROM audio_files WHERE id = $1', [fileId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = result.rows[0];
 
     // Check if user owns the file or is admin
     if (file.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Check if file exists
     if (!fs.existsSync(file.file_path)) {
-      return res.status(404).json({ error: 'File not found on server' });
+      return res.status(404).json({ error: 'Filen hittades inte på servern' });
     }
 
     const stat = fs.statSync(file.file_path);
@@ -279,7 +279,7 @@ const streamAudio = async (req, res) => {
     }
   } catch (error) {
     console.error('Stream error:', error);
-    res.status(500).json({ error: 'Error streaming file' });
+    res.status(500).json({ error: 'Det gick inte att strömma filen' });
   }
 };
 
@@ -292,14 +292,14 @@ const deleteAudio = async (req, res) => {
     const result = await pool.query('SELECT * FROM audio_files WHERE id = $1', [fileId]);
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = result.rows[0];
 
     // Check if user owns the file or is admin
     if (file.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Delete file from filesystem (try both file_path and folder+filename, but never remove folder)
@@ -325,7 +325,7 @@ const deleteAudio = async (req, res) => {
     res.json({ message: 'File deleted successfully' });
   } catch (error) {
     console.error('Delete error:', error);
-    res.status(500).json({ error: 'Error deleting file' });
+    res.status(500).json({ error: 'Det gick inte att ta bort filen' });
   }
 };
 
@@ -339,14 +339,14 @@ const updateBroadcastTime = async (req, res) => {
     const fileResult = await pool.query('SELECT * FROM audio_files WHERE id = $1', [fileId]);
     
     if (fileResult.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = fileResult.rows[0];
 
     // Check if user owns the file or is admin
     if (file.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Update broadcast time (null to clear schedule)
@@ -358,7 +358,7 @@ const updateBroadcastTime = async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update broadcast time error:', error);
-    res.status(500).json({ error: 'Error updating broadcast time' });
+    res.status(500).json({ error: 'Det gick inte att uppdatera sändningstiden' });
   }
 };
 

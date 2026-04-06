@@ -31,7 +31,7 @@ const getAllUsers = async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Error fetching users' });
+    res.status(500).json({ error: 'Det gick inte att hämta användare' });
   }
 };
 
@@ -42,7 +42,7 @@ const createUser = async (req, res) => {
 
     // Validation
     if (!username || !email || !password || !role) {
-      return res.status(400).json({ error: 'All fields are required' });
+      return res.status(400).json({ error: 'Alla fält är obligatoriska' });
     }
 
     // Username: no spaces allowed
@@ -51,7 +51,7 @@ const createUser = async (req, res) => {
     }
 
     if (!['user', 'admin'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role. Must be user or admin' });
+      return res.status(400).json({ error: 'Ogiltig roll. Måste vara user eller admin' });
     }
 
     const passwordError = validatePassword(password);
@@ -75,7 +75,7 @@ const createUser = async (req, res) => {
     // Folders are required for regular users (accept both 'folders' array and legacy 'folder' string)
     const folderList = folders || (req.body.folder ? [req.body.folder] : []);
     if (role === 'user' && folderList.length === 0) {
-      return res.status(400).json({ error: 'At least one folder is required' });
+      return res.status(400).json({ error: 'Minst en mapp krävs' });
     }
 
     // Create user
@@ -103,7 +103,7 @@ const createUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating user:', error);
-    res.status(500).json({ error: 'Error creating user' });
+    res.status(500).json({ error: 'Det gick inte att skapa användaren' });
   }
 };
 
@@ -116,12 +116,12 @@ const deleteUser = async (req, res) => {
     const user = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
 
     if (user.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Användaren hittades inte' });
     }
 
     // Prevent deleting superadmin users
     if (user.rows[0].role === 'superadmin') {
-      return res.status(403).json({ error: 'Cannot delete superadmin users' });
+      return res.status(403).json({ error: 'Det går inte att ta bort superadmin-användare' });
     }
 
     // Delete user
@@ -130,7 +130,7 @@ const deleteUser = async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Error deleting user:', error);
-    res.status(500).json({ error: 'Error deleting user' });
+    res.status(500).json({ error: 'Det gick inte att ta bort användaren' });
   }
 };
 
@@ -141,19 +141,19 @@ const updateUserRole = async (req, res) => {
     const { role, folders, name } = req.body;
 
     if (role && !['user', 'admin'].includes(role)) {
-      return res.status(400).json({ error: 'Invalid role. Must be user or admin' });
+      return res.status(400).json({ error: 'Ogiltig roll. Måste vara user eller admin' });
     }
 
     // Check if user exists
     const user = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
 
     if (user.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Användaren hittades inte' });
     }
 
     // Prevent changing superadmin role
     if (user.rows[0].role === 'superadmin') {
-      return res.status(403).json({ error: 'Cannot change superadmin role' });
+      return res.status(403).json({ error: 'Det går inte att ändra superadmins roll' });
     }
 
     // Build dynamic update query for user table
@@ -214,7 +214,7 @@ const updateUserRole = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating user:', error);
-    res.status(500).json({ error: 'Error updating user' });
+    res.status(500).json({ error: 'Det gick inte att uppdatera användaren' });
   }
 };
 
@@ -227,7 +227,7 @@ const updateOwnProfile = async (req, res) => {
     // Get current user
     const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Användaren hittades inte' });
     }
 
     const updates = [];
@@ -293,7 +293,7 @@ const updateOwnProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating profile:', error);
-    res.status(500).json({ error: 'Error updating profile' });
+    res.status(500).json({ error: 'Det gick inte att uppdatera profilen' });
   }
 };
 
@@ -306,7 +306,7 @@ const updateUserProfile = async (req, res) => {
     // Check user exists
     const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Användaren hittades inte' });
     }
 
     const updates = [];
@@ -368,7 +368,7 @@ const updateUserProfile = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating user profile:', error);
-    res.status(500).json({ error: 'Error updating user profile' });
+    res.status(500).json({ error: 'Det gick inte att uppdatera användarprofilen' });
   }
 };
 

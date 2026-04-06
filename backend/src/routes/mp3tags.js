@@ -24,19 +24,19 @@ router.get('/:fileId', authMiddleware, async (req, res) => {
     );
 
     if (fileQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = fileQuery.rows[0];
 
     // Check permissions
     if (userRole !== 'admin' && userRole !== 'superadmin' && file.user_id !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Check if file is MP3
     if (!file.filename.toLowerCase().endsWith('.mp3')) {
-      return res.status(400).json({ error: 'File is not an MP3' });
+      return res.status(400).json({ error: 'Filen är inte en MP3' });
     }
 
     // Build full file path including folder
@@ -56,7 +56,7 @@ router.get('/:fileId', authMiddleware, async (req, res) => {
     }
   } catch (error) {
     console.error('Error reading MP3 tags:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internt serverfel' });
   }
 });
 
@@ -88,19 +88,19 @@ router.put('/:fileId', authMiddleware, async (req, res) => {
     );
 
     if (fileQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = fileQuery.rows[0];
 
     // Check permissions
     if (userRole !== 'admin' && userRole !== 'superadmin' && file.user_id !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Check if file is MP3
     if (!file.filename.toLowerCase().endsWith('.mp3')) {
-      return res.status(400).json({ error: 'File is not an MP3' });
+      return res.status(400).json({ error: 'Filen är inte en MP3' });
     }
 
     // Build full file path including folder
@@ -123,7 +123,7 @@ router.put('/:fileId', authMiddleware, async (req, res) => {
     }
   } catch (error) {
     console.error('Error writing MP3 tags:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internt serverfel' });
   }
 });
 
@@ -144,19 +144,19 @@ router.delete('/:fileId', authMiddleware, async (req, res) => {
     );
 
     if (fileQuery.rows.length === 0) {
-      return res.status(404).json({ error: 'File not found' });
+      return res.status(404).json({ error: 'Filen hittades inte' });
     }
 
     const file = fileQuery.rows[0];
 
     // Check permissions
     if (userRole !== 'admin' && userRole !== 'superadmin' && file.user_id !== userId) {
-      return res.status(403).json({ error: 'Access denied' });
+      return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
     // Check if file is MP3
     if (!file.filename.toLowerCase().endsWith('.mp3')) {
-      return res.status(400).json({ error: 'File is not an MP3' });
+      return res.status(400).json({ error: 'Filen är inte en MP3' });
     }
 
     // Build full file path including folder
@@ -175,7 +175,7 @@ router.delete('/:fileId', authMiddleware, async (req, res) => {
     }
   } catch (error) {
     console.error('Error removing MP3 tags:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internt serverfel' });
   }
 });
 
