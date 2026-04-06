@@ -68,22 +68,38 @@ const uploadAudio = async (req, res) => {
 
     // Determine which user should own this file
     let effectiveUserId;
-    
+
     if (req.query.impersonatedUserId) {
-      // Impersonating - use impersonated user ID
-      effectiveUserId = req.query.impersonatedUserId;
+      if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Only admins can impersonate uploads' });
+      }
+
+      const impersonatedUserId = Number.parseInt(req.query.impersonatedUserId, 10);
+      if (!Number.isInteger(impersonatedUserId) || impersonatedUserId <= 0) {
+        return res.status(400).json({ error: 'Invalid impersonated user ID' });
+      }
+
+      const impersonatedUserResult = await pool.query(
+        'SELECT id FROM users WHERE id = $1 LIMIT 1',
+        [impersonatedUserId]
+      );
+
+      if (impersonatedUserResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Impersonated user not found' });
+      }
+
+      effectiveUserId = impersonatedUserId;
     } else if ((req.user.role === 'superadmin' || req.user.role === 'admin') && folder) {
-      // Admin/Superadmin uploading to a user's folder - find the folder owner
+      // Admin/Superadmin uploading to a managed folder - find one assigned owner
       const folderOwnerResult = await pool.query(
-        'SELECT id FROM users WHERE folder = $1 LIMIT 1',
+        'SELECT user_id FROM user_folders WHERE folder_name = $1 ORDER BY user_id ASC LIMIT 1',
         [folder]
       );
-      
+
       if (folderOwnerResult.rows.length > 0) {
-        // Use folder owner's ID
-        effectiveUserId = folderOwnerResult.rows[0].id;
+        effectiveUserId = folderOwnerResult.rows[0].user_id;
       } else {
-        // No user found for this folder, use admin's ID
+        // No user assigned to this folder, keep the file under the admin's ownership
         effectiveUserId = req.user.id;
       }
     } else {
