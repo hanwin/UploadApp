@@ -42,8 +42,6 @@ function AppContent() {
   const activeTab = getTabFromPath();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
     const savedImpersonation = localStorage.getItem('impersonatedUser');
     const savedRealUser = localStorage.getItem('realUser');
     
@@ -51,29 +49,21 @@ function AppContent() {
     if (urlParams.get('token')) {
       return;
     }
-    
-    if (token && savedUser) {
-      const cachedUser = JSON.parse(savedUser);
-      setUser(cachedUser);
-      
-      // Restore impersonation if exists
+
+    authAPI.getProfile().then(res => {
+      setUser(res.data);
+
       if (savedImpersonation && savedRealUser) {
         setImpersonatedUser(JSON.parse(savedImpersonation));
         setRealUser(JSON.parse(savedRealUser));
       }
-
-      // Refresh user profile from server to pick up folder changes etc.
-      authAPI.getProfile().then(res => {
-        const freshUser = { ...cachedUser, ...res.data };
-        setUser(freshUser);
-        localStorage.setItem('user', JSON.stringify(freshUser));
-      }).catch(() => {
-        // Token expired or invalid — log out
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setUser(null);
-      });
-    }
+    }).catch(() => {
+      setUser(null);
+      setImpersonatedUser(null);
+      setRealUser(null);
+      localStorage.removeItem('impersonatedUser');
+      localStorage.removeItem('realUser');
+    });
   }, []);
 
   // Auto-logout after 60 minutes of inactivity
@@ -123,9 +113,13 @@ function AppContent() {
     navigate('/files');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      // Clear local state even if the server-side cookie is already gone.
+    }
+
     localStorage.removeItem('impersonatedUser');
     localStorage.removeItem('realUser');
     setUser(null);

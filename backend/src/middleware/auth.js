@@ -1,9 +1,33 @@
 const jwt = require('jsonwebtoken');
 
+const getTokenFromCookies = (cookieHeader) => {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookies = cookieHeader.split(';');
+  for (const cookie of cookies) {
+    const [rawName, ...rawValue] = cookie.trim().split('=');
+    if (rawName === 'auth_token') {
+      return decodeURIComponent(rawValue.join('='));
+    }
+  }
+
+  return null;
+};
+
+const getTokenFromRequest = (req) => {
+  const authHeader = req.headers.authorization?.split(' ')[1];
+  if (authHeader) {
+    return authHeader;
+  }
+
+  return getTokenFromCookies(req.headers.cookie);
+};
+
 const authMiddleware = (req, res, next) => {
   try {
-    // Only check for token in Authorization header (security best practice)
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = getTokenFromRequest(req);
     
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });
@@ -31,4 +55,4 @@ const superadminMiddleware = (req, res, next) => {
   next();
 };
 
-module.exports = { authMiddleware, adminMiddleware, superadminMiddleware };
+module.exports = { authMiddleware, adminMiddleware, superadminMiddleware, getTokenFromRequest };

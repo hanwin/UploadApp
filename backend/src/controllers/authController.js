@@ -4,6 +4,14 @@ const crypto = require('crypto');
 const pool = require('../models/db');
 const { sendPasswordResetEmail } = require('../services/emailService');
 
+const getAuthCookieOptions = () => ({
+  httpOnly: true,
+  sameSite: 'lax',
+  secure: process.env.NODE_ENV === 'production',
+  maxAge: 24 * 60 * 60 * 1000,
+  path: '/'
+});
+
 // Register new user
 const register = async (req, res) => {
   try {
@@ -81,9 +89,10 @@ const login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
+    res.cookie('auth_token', token, getAuthCookieOptions());
+
     res.json({
       message: 'Login successful',
-      token,
       user: {
         id: user.id,
         username: user.username,
@@ -96,6 +105,14 @@ const login = async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
+};
+
+const logout = async (req, res) => {
+  res.clearCookie('auth_token', {
+    ...getAuthCookieOptions(),
+    maxAge: undefined
+  });
+  res.json({ message: 'Logged out successfully' });
 };
 
 // Get current user profile
@@ -221,4 +238,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, getProfile, forgotPassword, resetPassword };
+module.exports = { register, login, logout, getProfile, forgotPassword, resetPassword };

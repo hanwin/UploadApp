@@ -99,13 +99,6 @@ function ProfileDialog({ open, onClose, user, onUpdate }) {
 
       const response = await userAPI.updateOwnProfile(updateData);
       success('Profilen uppdaterad');
-      
-      // Update user in localStorage if email changed
-      if (updateData.email) {
-        const storedUser = JSON.parse(localStorage.getItem('user'));
-        storedUser.email = response.data.user.email;
-        localStorage.setItem('user', JSON.stringify(storedUser));
-      }
 
       if (onUpdate) {
         onUpdate(response.data.user);

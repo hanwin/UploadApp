@@ -24,13 +24,11 @@ function Login({ onLogin, onForgotPassword }) {
   const { error: showError } = useToast();
 
   useEffect(() => {
-    // Load saved credentials
+    // Load saved username only
     const savedUsername = localStorage.getItem('savedUsername');
-    const savedPassword = localStorage.getItem('savedPassword');
     
-    if (savedUsername && savedPassword) {
+    if (savedUsername) {
       setUsername(savedUsername);
-      setPassword(savedPassword);
       setRememberMe(true);
     }
   }, []);
@@ -41,16 +39,12 @@ function Login({ onLogin, onForgotPassword }) {
 
     try {
       const response = await authAPI.login({ username, password });
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
       
-      // Save or remove credentials based on checkbox
+      // Save or remove username based on checkbox
       if (rememberMe) {
         localStorage.setItem('savedUsername', username);
-        localStorage.setItem('savedPassword', password);
       } else {
         localStorage.removeItem('savedUsername');
-        localStorage.removeItem('savedPassword');
       }
       
       onLogin(response.data.user);
@@ -113,7 +107,7 @@ function Login({ onLogin, onForgotPassword }) {
                     color="primary"
                   />
                 }
-                label="Spara lösenordet"
+                label="Kom ihåg användarnamn"
               />
               
               <Box sx={{ textAlign: 'right', mt: 1 }}>

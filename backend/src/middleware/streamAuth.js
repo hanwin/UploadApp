@@ -1,11 +1,11 @@
 const jwt = require('jsonwebtoken');
+const { getTokenFromRequest } = require('./auth');
 
 // Special auth middleware for audio streaming that allows token in query
 // HTML5 audio elements can't send Authorization headers
 const streamAuthMiddleware = (req, res, next) => {
   try {
-    // Check Authorization header first (preferred)
-    let token = req.headers.authorization?.split(' ')[1];
+    let token = getTokenFromRequest(req);
     
     // Fall back to query parameter for streaming (required for HTML5 audio)
     if (!token && req.query.token) {
