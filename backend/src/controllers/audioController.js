@@ -3,6 +3,7 @@ const pool = require('../models/db');
 const path = require('path');
 const fs = require('fs');
 const { processAudioInBackground } = require('../services/audioProcessor');
+const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 
 // Upload audio file
 const uploadAudio = async (req, res) => {
@@ -15,7 +16,7 @@ const uploadAudio = async (req, res) => {
 
     fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: file received, originalname=' + req.file.originalname + ', filename=' + req.file.filename + ', mimetype=' + req.file.mimetype + ', size=' + req.file.size + '\n');
 
-    const { filename, originalname, size, mimetype, path: filePath } = req.file;
+    const { filename, originalname, size, path: filePath } = req.file;
     const shouldProcess = req.body.processAudio === 'true'; // Check if processing requested
     const deleteOriginal = req.body.deleteOriginal === 'true'; // Check if original should be deleted
     
@@ -59,12 +60,17 @@ const uploadAudio = async (req, res) => {
     
     // Decode originalname from latin1 to utf-8 (multer encoding) and normalize
     const decodedOriginalName = Buffer.from(originalname, 'latin1').toString('utf8').normalize('NFC');
+    const canonicalMimeType = getCanonicalAudioMimeType(decodedOriginalName) || getCanonicalAudioMimeType(filename);
+
+    if (!canonicalMimeType) {
+      return res.status(400).json({ error: 'Unsupported audio file type' });
+    }
 
     // Use folder name as-is (matches disk_name in folders table)
     const dbFolder = folder;
 
     // Determine initial processing status
-    const processingStatus = shouldProcess && mimetype === 'audio/wav' ? 'pending' : 'none';
+    const processingStatus = shouldProcess && canonicalMimeType === 'audio/wav' ? 'pending' : 'none';
 
     // Determine which user should own this file
     let effectiveUserId;
@@ -111,13 +117,13 @@ const uploadAudio = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO audio_files (user_id, filename, original_name, file_path, file_size, mime_type, folder, processing_status, delete_original_on_success)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [effectiveUserId, filename, decodedOriginalName, filePath, size, mimetype, dbFolder, processingStatus, deleteOriginal]
+      [effectiveUserId, filename, decodedOriginalName, filePath, size, canonicalMimeType, dbFolder, processingStatus, deleteOriginal]
     );
 
     const fileId = result.rows[0].id;
 
     // If processing requested and file is WAV, start background processing
-    if (shouldProcess && mimetype === 'audio/wav') {
+    if (shouldProcess && canonicalMimeType === 'audio/wav') {
       console.log(`Starting background processing for file ${fileId}`);
       processAudioInBackground(fileId);
     }
@@ -233,6 +239,7 @@ const streamAudio = async (req, res) => {
     const stat = fs.statSync(file.file_path);
     const fileSize = stat.size;
     const range = req.headers.range;
+    const streamMimeType = getCanonicalAudioMimeType(file.original_name) || getCanonicalAudioMimeType(file.filename) || 'application/octet-stream';
 
     if (range) {
       // Parse Range header
@@ -250,7 +257,8 @@ const streamAudio = async (req, res) => {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
-        'Content-Type': file.mime_type,
+        'Content-Type': streamMimeType,
+        'X-Content-Type-Options': 'nosniff',
         'Content-Disposition': `inline; filename*=UTF-8''${encodedFilename}`
       });
 
@@ -260,8 +268,9 @@ const streamAudio = async (req, res) => {
       const encodedFilename = encodeURIComponent(file.original_name);
       res.writeHead(200, {
         'Content-Length': fileSize,
-        'Content-Type': file.mime_type,
+        'Content-Type': streamMimeType,
         'Accept-Ranges': 'bytes',
+        'X-Content-Type-Options': 'nosniff',
         'Content-Disposition': `inline; filename*=UTF-8''${encodedFilename}`
       });
 

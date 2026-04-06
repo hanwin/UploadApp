@@ -6,6 +6,7 @@ function debugLog(msg) {
 }
 
 const { normalizeFolderName } = require('../utils/normalizeFolderName');
+const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -106,20 +107,13 @@ const storage = multer.diskStorage({
 
 // File filter to accept only audio files
 const fileFilter = (req, file, cb) => {
-  const allowedMimeTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/x-wav', 'audio/x-mpeg', 'audio/x-mp3', 'application/x-mp3'];
-  const allowedExtensions = ['.mp3', '.wav'];
-  
-  // Decode originalname from latin1 to utf-8 for correct extension check
   const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
-  const ext = path.extname(decodedName).toLowerCase();
-  
-  // Check extension regardless of MIME type reported by browser
-  if (allowedExtensions.includes(ext)) {
-    cb(null, true);
-  } else if (allowedMimeTypes.includes(file.mimetype)) {
+  const canonicalMimeType = getCanonicalAudioMimeType(decodedName);
+
+  if (canonicalMimeType) {
     cb(null, true);
   } else {
-    debugLog('fileFilter rejected: mimetype=' + file.mimetype + ', ext=' + ext);
+    debugLog('fileFilter rejected: mimetype=' + file.mimetype + ', originalname=' + decodedName);
     cb(new Error('Only MP3 and WAV files are allowed'), false);
   }
 };
