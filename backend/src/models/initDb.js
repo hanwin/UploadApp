@@ -83,40 +83,42 @@ const ensureTables = async () => {
   console.log('✓ Database tables created successfully');
 };
 
-// Full init: create tables + seed superadmin (for standalone script use)
+// Create default superadmin if ADMIN_PASSWORD is set and user doesn't exist yet
+const ensureSuperadmin = async () => {
+  const bcrypt = require('bcryptjs');
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    console.log('⚠ No ADMIN_PASSWORD environment variable set. Skipping superadmin creation.');
+    return;
+  }
+  if (adminPassword.length < 12) {
+    console.log('⚠ ADMIN_PASSWORD must be at least 12 characters. Skipping superadmin creation.');
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  try {
+    await pool.query(
+      'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)',
+      ['superadmin', 'superadmin@example.com', hashedPassword, 'superadmin']
+    );
+    console.log('✓ Default superadmin user created (username: superadmin)');
+    console.log('⚠ Change the password immediately after first login!');
+  } catch (err) {
+    if (err.code === '23505') {
+      console.log('✓ Superadmin user already exists');
+    } else {
+      throw err;
+    }
+  }
+};
+
+// Full init (standalone script): create tables + seed superadmin, then exit
 const initDb = async () => {
   try {
     await ensureTables();
-    
-    // Create default superadmin user if one doesn't exist
-    // Password must be set via environment variable for security
-    const bcrypt = require('bcryptjs');
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    
-    if (!adminPassword) {
-      console.log('⚠ No ADMIN_PASSWORD environment variable set. Skipping superadmin creation.');
-      console.log('⚠ Set ADMIN_PASSWORD environment variable to create initial superadmin.');
-    } else if (adminPassword.length < 12) {
-      console.log('⚠ ADMIN_PASSWORD must be at least 12 characters. Skipping superadmin creation.');
-    } else {
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
-      
-      try {
-        await pool.query(
-          'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)',
-          ['superadmin', 'superadmin@example.com', hashedPassword, 'superadmin']
-        );
-        console.log('✓ Default superadmin user created (username: superadmin)');
-        console.log('⚠ Change the password immediately after first login!');
-      } catch (err) {
-        if (err.code === '23505') {
-          console.log('✓ Superadmin user already exists');
-        } else {
-          throw err;
-        }
-      }
-    }
-
+    await ensureSuperadmin();
     process.exit(0);
   } catch (error) {
     console.error('Error initializing database:', error);
@@ -124,9 +126,8 @@ const initDb = async () => {
   }
 };
 
-// Run as standalone script
 if (require.main === module) {
   initDb();
 }
 
-module.exports = { ensureTables };
+module.exports = { ensureTables, ensureSuperadmin };
