@@ -6,10 +6,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: audiouser
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-audiopass}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       POSTGRES_DB: audiodb
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -34,9 +32,9 @@ services:
       DB_PORT: 5432
       DB_NAME: audiodb
       DB_USER: audiouser
-      DB_PASSWORD: ${DB_PASSWORD:-audiopass}
-      JWT_SECRET: ${JWT_SECRET}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set in .env}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-465}
       SMTP_USER: ${SMTP_USER:-}
