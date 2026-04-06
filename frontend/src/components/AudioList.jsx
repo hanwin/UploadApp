@@ -61,6 +61,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     if (isAdmin && !impersonatedUserId) {
       loadFolders();
     } else if (impersonatedUserId && user.folders?.length > 0) {
+      loadFolders(); // Need folder metadata to resolve original_name
       // When impersonating, set selected folder to the impersonated user's first folder
       if (!selectedFolder) setSelectedFolder(user.folders[0]);
     } else if (!isAdmin && user.folders?.length > 0) {
