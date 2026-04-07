@@ -331,11 +331,6 @@ function AppContent() {
           } />
           <Route path="*" element={
             <Box>
-              {!showAdminTabs && displayUser.folders && displayUser.folders.length === 1 && (
-                <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
-                  {displayUser.folders[0]}
-                </Typography>
-              )}
               <AudioList 
                 user={displayUser} 
                 refreshTrigger={refreshTrigger} 
