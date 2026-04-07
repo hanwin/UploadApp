@@ -61,9 +61,8 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     if (isAdmin && !impersonatedUserId) {
       loadFolders();
     } else if (impersonatedUserId && user.folders?.length > 0) {
-      loadFolders(); // Need folder metadata to resolve original_name
-      // When impersonating, set selected folder to the impersonated user's first folder
-      if (!selectedFolder) setSelectedFolder(user.folders[0]);
+      // When impersonating, prefer the impersonated user's associated folder.
+      loadFolders(user.folders[0]);
     } else if (!isAdmin && user.folders?.length > 0) {
       // Regular user - set first folder if none selected in URL
       if (!selectedFolder) {
@@ -148,16 +147,19 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     };
   }, []);
 
-  const loadFolders = async () => {
+  const loadFolders = async (preferredFolder) => {
     try {
       const response = await folderAPI.getAll();
       const sorted = [...response.data].sort((a, b) =>
         (a.original_name || a.disk_name).localeCompare(b.original_name || b.disk_name, 'sv')
       );
       setFolders(sorted);
-      // Set first folder as default selected (use disk_name)
-      if (sorted.length > 0 && !selectedFolder) {
-        setSelectedFolder(sorted[0].disk_name);
+
+      // Set default selected folder only if no folder is currently chosen in the URL.
+      const folderFromUrl = getFolderFromUrl();
+      if (!folderFromUrl && sorted.length > 0) {
+        const fallbackFolder = preferredFolder || sorted[0].disk_name;
+        setSelectedFolder(fallbackFolder);
       }
     } catch (err) {
       console.error('Failed to load folders:', err);
