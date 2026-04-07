@@ -68,7 +68,7 @@ const ensureTables = async () => {
       filename VARCHAR(255) NOT NULL,
       original_name VARCHAR(255) NOT NULL,
       file_path VARCHAR(500) NOT NULL,
-      file_size INTEGER NOT NULL,
+      file_size BIGINT NOT NULL,
       mime_type VARCHAR(50) NOT NULL,
       duration FLOAT,
       folder VARCHAR(255),
@@ -79,6 +79,12 @@ const ensureTables = async () => {
       processed_file_id INTEGER REFERENCES audio_files(id) ON DELETE SET NULL,
       uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
+  `);
+
+  await pool.query(`
+    ALTER TABLE audio_files
+    ALTER COLUMN file_size TYPE BIGINT
+    USING file_size::BIGINT
   `);
 
   console.log('✓ Database tables created successfully');
