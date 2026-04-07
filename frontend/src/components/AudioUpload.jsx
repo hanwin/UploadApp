@@ -368,7 +368,7 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
                   {dragActive ? 'Släpp filen här' : 'Klicka eller dra och släpp en ljudfil här'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  MP3 eller WAV (max 2GB)
+                  MP3 eller WAV (max 4GB)
                 </Typography>
               </>
             )}
