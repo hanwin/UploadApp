@@ -64,8 +64,8 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
       return;
     }
 
-    if (selectedFile.size > 2 * 1024 * 1024 * 1024) {
-      showError('Filen får max vara 2GB');
+    if (selectedFile.size > 4 * 1024 * 1024 * 1024) {
+      showError('Filen får max vara 4GB');
       return;
     }
 
