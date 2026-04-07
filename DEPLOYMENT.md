@@ -84,6 +84,32 @@ sudo ln -s /etc/nginx/sites-available/audio-upload /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
+### Stora filer (Nginx)
+
+Appen är konfigurerad för stora uppladdningar, men om du vill öka gränsen måste du uppdatera alla Nginx-lager som finns i kedjan.
+
+1. Extern reverse proxy (servern):
+	- Fil: `/etc/nginx/sites-available/audio-upload`
+	- Ändra `client_max_body_size` till önskat värde, t.ex. `4G`
+	- Kontrollera att `/api/` har:
+	  - `proxy_request_buffering off;`
+	  - `proxy_connect_timeout 1800s;`
+	  - `proxy_send_timeout 1800s;`
+	  - `proxy_read_timeout 1800s;`
+
+2. Frontend-containerns Nginx:
+	- Fil i repo: `frontend/nginx.conf`
+	- Ändra `client_max_body_size` till samma (eller högre) värde i server/location för `/api`
+
+3. Ladda om/bygg om efter ändring:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+docker compose up -d --build frontend
+```
+
+Tips: Om du kör Cloudflare eller annan proxy framför Nginx kan den ha en egen upload-gräns som måste justeras separat.
+
 ## 6. SSL med Let's Encrypt
 
 ```bash
