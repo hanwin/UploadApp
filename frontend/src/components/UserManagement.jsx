@@ -104,10 +104,16 @@ function UserManagement({ user, onViewAsUser }) {
   const loadFolders = async () => {
     try {
       const response = await folderAPI.getAll();
-      setFolders(response.data);
+      const sorted = [...response.data].sort((a, b) =>
+        (a.original_name || a.disk_name || a.name).localeCompare(
+          b.original_name || b.disk_name || b.name,
+          'sv'
+        )
+      );
+      setFolders(sorted);
       // Set first folder as default in form
-      if (response.data.length > 0 && formData.folders.length === 0) {
-        const firstFolder = response.data[0]?.disk_name || response.data[0]?.name;
+      if (sorted.length > 0 && formData.folders.length === 0) {
+        const firstFolder = sorted[0]?.disk_name || sorted[0]?.name;
         if (firstFolder) {
           setFormData(prev => ({ ...prev, folders: [firstFolder] }));
         }

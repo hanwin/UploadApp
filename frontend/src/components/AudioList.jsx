@@ -41,6 +41,11 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
   const location = useLocation();
 
   const isAdmin = user.role === 'admin' || user.role === 'superadmin';
+  const sortedUserFolders = [...(user.folders || [])].sort((a, b) => {
+    const nameA = folders.find(f => f.disk_name === a)?.original_name || a;
+    const nameB = folders.find(f => f.disk_name === b)?.original_name || b;
+    return nameA.localeCompare(nameB, 'sv');
+  });
 
   // Read folder from URL path: /files/folderName or /folder/folderName
   const getFolderFromUrl = () => {
@@ -60,13 +65,13 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
   useEffect(() => {
     if (isAdmin && !impersonatedUserId) {
       loadFolders();
-    } else if (impersonatedUserId && user.folders?.length > 0) {
+    } else if (impersonatedUserId && sortedUserFolders.length > 0) {
       // When impersonating, prefer the impersonated user's associated folder.
-      loadFolders(user.folders[0]);
-    } else if (!isAdmin && user.folders?.length > 0) {
+      loadFolders(sortedUserFolders[0]);
+    } else if (!isAdmin && sortedUserFolders.length > 0) {
       // Regular user - set first folder if none selected in URL
       if (!selectedFolder) {
-        setSelectedFolder(user.folders[0]);
+        setSelectedFolder(sortedUserFolders[0]);
       }
     }
     loadFiles();
@@ -251,7 +256,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
 
   const selectedFolderDisplayName = (() => {
     if (!selectedFolder) {
-      return user.folders && user.folders[0] ? user.folders[0] : '';
+      return sortedUserFolders[0] || '';
     }
 
     const folderObj = folders.find(f => f.disk_name === selectedFolder);
@@ -284,7 +289,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
           <List sx={{ flexGrow: 1, pt: 0 }}>
             {(isAdmin 
               ? folders.map((folder) => ({ id: folder.id, disk_name: folder.disk_name, original_name: folder.original_name }))
-              : (user.folders || []).map((disk_name, i) => {
+              : sortedUserFolders.map((disk_name, i) => {
                   const folderObj = folders.find(f => f.disk_name === disk_name);
                   return {
                     id: `uf-${i}`,
