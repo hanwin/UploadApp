@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { MAX_UPLOAD_BYTES } = require('../utils/uploadLimits');
 
 // Loggfunktion
 function debugLog(msg) {
@@ -78,7 +79,7 @@ function fileFilter(req, file, cb) {
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_BYTES },
   preservePath: false
 });
 

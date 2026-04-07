@@ -76,6 +76,10 @@ app.get('/api/health', (req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({ error: 'Filen får max vara 4GB' });
+  }
   
   if (err.message === 'Only MP3 and WAV files are allowed') {
     return res.status(400).json({ error: err.message });

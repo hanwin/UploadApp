@@ -7,6 +7,7 @@ function debugLog(msg) {
 
 const { normalizeFolderName } = require('../utils/normalizeFolderName');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
+const { MAX_UPLOAD_BYTES } = require('../utils/uploadLimits');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -122,7 +123,7 @@ const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 2 * 1024 * 1024 * 1024 // 2GB limit
+    fileSize: MAX_UPLOAD_BYTES
   },
   preservePath: false
 });

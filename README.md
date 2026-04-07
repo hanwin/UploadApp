@@ -4,7 +4,7 @@ Webbapplikation för att ladda upp och hantera ljudfiler, byggd med React, Node.
 
 ## Funktioner
 
-- Uppladdning av MP3/WAV (max 2 GB)
+- Uppladdning av MP3/WAV (max 4 GB)
 - Rollbaserad åtkomst (superadmin, admin, användare)
 - Mappstruktur per användare/program
 - JWT-autentisering
@@ -55,6 +55,8 @@ Appen nås på `https://localhost:4443` (self-signed cert).
 ## Uppladdade filer
 
 Filer lagras i `backend/uploads/` (bind-mountad från Docker). Mappstrukturen matchar `disk_name` i databasen.
+
+Maximal filstorlek för uppladdning är 4 GB. Om du vill ändra gränsen ytterligare, uppdatera både Nginx-konfigurationen och backend/frontend-valideringen.
 
 ## Vanliga kommandon
 

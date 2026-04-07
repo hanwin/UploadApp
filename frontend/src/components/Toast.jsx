@@ -10,7 +10,7 @@ function Toast() {
         <Snackbar
           key={toast.id}
           open={true}
-          autoHideDuration={4000}
+          autoHideDuration={toast.autoHideDuration ?? undefined}
           onClose={() => removeToast(toast.id)}
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
           sx={{ 

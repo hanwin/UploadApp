@@ -15,11 +15,14 @@ export const ToastProvider = ({ children }) => {
 
   const addToast = (message, type = 'info') => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    
-    setTimeout(() => {
-      setToasts(prev => prev.filter(toast => toast.id !== id));
-    }, 4000);
+    const autoHideDuration = type === 'error' ? null : 4000;
+    setToasts(prev => [...prev, { id, message, type, autoHideDuration }]);
+
+    if (autoHideDuration !== null) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(toast => toast.id !== id));
+      }, autoHideDuration);
+    }
   };
 
   const removeToast = (id) => {
