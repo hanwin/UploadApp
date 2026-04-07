@@ -141,8 +141,13 @@ function AppContent() {
     setImpersonatedUser(targetUser);
     localStorage.setItem('impersonatedUser', JSON.stringify(targetUser));
     
-    // Switch to audio files
-    navigate('/files');
+    // Switch directly to the impersonated user's associated folder.
+    const firstFolder = targetUser?.folders?.[0];
+    if (firstFolder) {
+      navigate(`/files/${encodeURIComponent(firstFolder)}`);
+    } else {
+      navigate('/files');
+    }
   };
 
   const handleStopImpersonation = () => {
