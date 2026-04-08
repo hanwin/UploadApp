@@ -66,7 +66,9 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/mp3tags', mp3TagsRoutes);
-app.use('/api', testUploadRoutes);
+if (process.env.ENABLE_TEST_UPLOAD_ROUTE === 'true') {
+  app.use('/api', testUploadRoutes);
+}
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 
 const router = express.Router();
 
@@ -21,10 +23,17 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  fileFilter: (req, file, cb) => cb(null, true)
+  fileFilter: (req, file, cb) => {
+    const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const canonicalMimeType = getCanonicalAudioMimeType(decodedName);
+    if (!canonicalMimeType) {
+      return cb(new Error('Only MP3 and WAV files are allowed'), false);
+    }
+    return cb(null, true);
+  }
 });
 
-router.post('/test-upload', upload.single('audio'), (req, res) => {
+router.post('/test-upload', authMiddleware, adminMiddleware, upload.single('audio'), (req, res) => {
   fs.appendFileSync(path.join(__dirname, '../../uploads/upload-debug.log'), new Date().toISOString() + ' TEST route handler, file=' + (req.file && req.file.filename) + '\n');
   res.json({
     message: 'Test upload route hit',
