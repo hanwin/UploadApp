@@ -56,6 +56,22 @@ Appen nås på `https://localhost:4443` (self-signed cert).
 
 Filer lagras i `backend/uploads/` (bind-mountad från Docker). Mappstrukturen matchar `disk_name` i databasen.
 
+För säkrare filrättigheter kör backend som icke-root (`PUID`/`PGID` i `.env`).
+Sätt dessa till din host-användares UID/GID så att nya filer inte skapas som root.
+
+Exempel (Linux):
+
+```bash
+id -u
+id -g
+```
+
+Om du redan har root-ägda filer i `backend/uploads`, rätta ägarskap en gång:
+
+```bash
+sudo chown -R $(id -u):$(id -g) backend/uploads
+```
+
 Maximal filstorlek för uppladdning är 4 GB. Om du vill ändra gränsen ytterligare, uppdatera både Nginx-konfigurationen och backend/frontend-valideringen.
 
 ## Vanliga kommandon

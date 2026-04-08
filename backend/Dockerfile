@@ -12,10 +12,13 @@ COPY package*.json ./
 RUN npm install
 
 # Copy source code
-COPY . .
+COPY --chown=node:node . .
 
 # Create uploads directory
-RUN mkdir -p uploads
+RUN mkdir -p uploads && chown -R node:node /app
+
+# Drop root privileges at runtime
+USER node
 
 # Expose port
 EXPOSE 5000
