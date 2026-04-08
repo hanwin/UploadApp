@@ -24,6 +24,7 @@ import { ToastProvider } from './contexts/ToastContext';
 import { authAPI } from './services/api';
 
 function AppContent() {
+  const IMPERSONATION_RETURN_PATH_KEY = 'impersonationReturnPath';
   const [user, setUser] = useState(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [impersonatedUser, setImpersonatedUser] = useState(null);
@@ -63,6 +64,7 @@ function AppContent() {
       setRealUser(null);
       localStorage.removeItem('impersonatedUser');
       localStorage.removeItem('realUser');
+      localStorage.removeItem(IMPERSONATION_RETURN_PATH_KEY);
     });
   }, []);
 
@@ -122,6 +124,7 @@ function AppContent() {
 
     localStorage.removeItem('impersonatedUser');
     localStorage.removeItem('realUser');
+    localStorage.removeItem(IMPERSONATION_RETURN_PATH_KEY);
     setUser(null);
     setImpersonatedUser(null);
     setRealUser(null);
@@ -133,6 +136,9 @@ function AppContent() {
   };
 
   const handleViewAsUser = (targetUser) => {
+    const currentPath = `${location.pathname || ''}${location.search || ''}${location.hash || ''}`;
+    localStorage.setItem(IMPERSONATION_RETURN_PATH_KEY, currentPath || '/users');
+
     // Save real user
     setRealUser(user);
     localStorage.setItem('realUser', JSON.stringify(user));
@@ -155,7 +161,9 @@ function AppContent() {
     setRealUser(null);
     localStorage.removeItem('impersonatedUser');
     localStorage.removeItem('realUser');
-    navigate('/files');
+    const returnPath = localStorage.getItem(IMPERSONATION_RETURN_PATH_KEY) || '/users';
+    localStorage.removeItem(IMPERSONATION_RETURN_PATH_KEY);
+    navigate(returnPath);
   };
 
   if (!user) {
