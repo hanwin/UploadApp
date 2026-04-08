@@ -16,7 +16,8 @@ import {
   Divider,
   Paper,
   LinearProgress,
-  Button
+  Button,
+  Alert
 } from '@mui/material';
 import { Delete, AudioFile, Person, Folder as FolderIcon, Schedule, CalendarMonth, MusicNote } from '@mui/icons-material';
 import { audioAPI, folderAPI } from '../services/api';
@@ -35,8 +36,10 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
   const [scheduleDialog, setScheduleDialog] = useState(null);
   const [mp3TagsDialog, setMp3TagsDialog] = useState(null);
   const [folders, setFolders] = useState([]);
+  const [foldersLoaded, setFoldersLoaded] = useState(false);
   const { success, error: showError } = useToast();
   const socketRef = useRef(null);
+  const lastInvalidFolderRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -53,6 +56,15 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     return match ? decodeURIComponent(match[1]) : null;
   };
   const selectedFolder = getFolderFromUrl();
+  const allowedFolders = isAdmin && !impersonatedUserId
+    ? folders.map(f => f.disk_name)
+    : (user.folders || []);
+  const shouldValidateSelectedFolder = selectedFolder
+    && (!(isAdmin && !impersonatedUserId) || foldersLoaded);
+  const hasInvalidFolderInUrl = shouldValidateSelectedFolder
+    ? !allowedFolders.includes(selectedFolder)
+    : false;
+  const fallbackFolder = allowedFolders[0] || null;
 
   const setSelectedFolder = (diskName) => {
     if (diskName) {
@@ -63,6 +75,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
   };
 
   useEffect(() => {
+    setFoldersLoaded(false);
     if (isAdmin && !impersonatedUserId) {
       loadFolders();
     } else if (impersonatedUserId && sortedUserFolders.length > 0) {
@@ -76,6 +89,28 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     }
     loadFiles();
   }, [refreshTrigger, user, impersonatedUserId]);
+
+  useEffect(() => {
+    // No folder in URL means the default flow should choose one automatically.
+    if (!selectedFolder) {
+      lastInvalidFolderRef.current = null;
+      return;
+    }
+
+    if (!shouldValidateSelectedFolder) {
+      return;
+    }
+
+    if (!hasInvalidFolderInUrl) {
+      lastInvalidFolderRef.current = null;
+      return;
+    }
+
+    if (lastInvalidFolderRef.current !== selectedFolder) {
+      showError('Mappen i URL:en finns inte eller är inte tillgänglig');
+      lastInvalidFolderRef.current = selectedFolder;
+    }
+  }, [selectedFolder, shouldValidateSelectedFolder, hasInvalidFolderInUrl, showError]);
 
   // WebSocket effect
   useEffect(() => {
@@ -168,6 +203,8 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
       }
     } catch (err) {
       console.error('Failed to load folders:', err);
+    } finally {
+      setFoldersLoaded(true);
     }
   };
 
@@ -326,25 +363,46 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
 
           <Divider sx={{ my: 2 }} />
 
-          {/* Upload section - only show if folder is available */}
-          {(selectedFolder || (user.folders && user.folders.length > 0)) ? (
-            <Box sx={{ mb: 3 }}>
-              <AudioUpload 
-                user={user} 
-                onUploadSuccess={onUploadSuccess}
-                selectedFolder={selectedFolder}
-                impersonatedUserId={impersonatedUserId}
-              />
+          {hasInvalidFolderInUrl ? (
+            <Box sx={{ my: 3 }}>
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Den angivna mappen i URL:en finns inte eller är inte tillgänglig.
+              </Alert>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {fallbackFolder && (
+                  <Button
+                    variant="contained"
+                    onClick={() => setSelectedFolder(fallbackFolder)}
+                  >
+                    Gå till giltig mapp
+                  </Button>
+                )}
+                <Button variant="outlined" onClick={() => navigate('/files')}>
+                  Gå till filöversikt
+                </Button>
+              </Box>
             </Box>
-          ) : isAdmin && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
-              <Typography variant="body2" color="info.contrastText">
-                📁 Välj en mapp från sidopanelen eller gå till "Mappar" → "Visa filer" för att ladda upp filer
-              </Typography>
-            </Box>
-          )}
+          ) : (
+            <>
+              {/* Upload section - only show if folder is available */}
+              {(selectedFolder || (user.folders && user.folders.length > 0)) ? (
+                <Box sx={{ mb: 3 }}>
+                  <AudioUpload 
+                    user={user} 
+                    onUploadSuccess={onUploadSuccess}
+                    selectedFolder={selectedFolder}
+                    impersonatedUserId={impersonatedUserId}
+                  />
+                </Box>
+              ) : isAdmin && (
+                <Box sx={{ mb: 3, p: 2, bgcolor: 'info.light', borderRadius: 1 }}>
+                  <Typography variant="body2" color="info.contrastText">
+                    📁 Välj en mapp från sidopanelen eller gå till "Mappar" → "Visa filer" för att ladda upp filer
+                  </Typography>
+                </Box>
+              )}
 
-          <Divider sx={{ my: 2 }} />
+              <Divider sx={{ my: 2 }} />
 
         {filteredFiles.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
@@ -480,6 +538,8 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
             ))}
           </List>
         )}
+            </>
+          )}
 
         <ConfirmModal
           isOpen={!!confirmDelete}
