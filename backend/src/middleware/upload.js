@@ -34,7 +34,10 @@ async function setUploadFolderPath(req, res, next) {
       folderName = req.query.folder;
       if (folderName) {
         const accessCheck = await pool.query(
-          'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2',
+          `SELECT 1
+             FROM user_folders uf
+             JOIN folders f ON f.disk_name = uf.folder_name
+            WHERE uf.user_id = $1 AND uf.folder_name = $2`,
           [req.user.id, folderName]
         );
         if (accessCheck.rows.length === 0) {
@@ -43,7 +46,12 @@ async function setUploadFolderPath(req, res, next) {
         }
       } else {
         const userFolders = await pool.query(
-          'SELECT folder_name FROM user_folders WHERE user_id = $1 ORDER BY folder_name LIMIT 1',
+          `SELECT uf.folder_name
+             FROM user_folders uf
+             JOIN folders f ON f.disk_name = uf.folder_name
+            WHERE uf.user_id = $1
+            ORDER BY uf.folder_name
+            LIMIT 1`,
           [req.user.id]
         );
         folderName = userFolders.rows[0]?.folder_name;
@@ -53,15 +61,24 @@ async function setUploadFolderPath(req, res, next) {
       debugLog('setUploadFolderPath: no folder specified');
       return res.status(400).json({ error: 'Ingen mapp angiven' });
     }
-    // For admin/superadmin, use folder name as-is (no normalization)
-    let folderPath = path.join(uploadsDir, folderName);
+    const folderCheck = await pool.query(
+      'SELECT disk_name FROM folders WHERE disk_name = $1 LIMIT 1',
+      [folderName]
+    );
+    if (folderCheck.rows.length === 0) {
+      debugLog('setUploadFolderPath: unknown folderName=' + folderName);
+      return res.status(400).json({ error: 'Mappen finns inte' });
+    }
+
+    // Use folder names managed by folders table only.
+    const folderPath = path.join(uploadsDir, folderName);
     if (!folderPath.startsWith(uploadsDir)) {
       debugLog('setUploadFolderPath: invalid folderPath=' + folderPath);
       return res.status(400).json({ error: 'Ogiltig mappsökväg' });
     }
     if (!fs.existsSync(folderPath)) {
-      fs.mkdirSync(folderPath, { recursive: true });
-      debugLog('setUploadFolderPath: created folderPath=' + folderPath);
+      debugLog('setUploadFolderPath: folder missing on disk for managed folder=' + folderName);
+      return res.status(500).json({ error: 'Mappen finns inte på servern. Skapa den via mapphanteringen.' });
     }
     req.folderPath = folderPath;
     debugLog('setUploadFolderPath: set req.folderPath=' + folderPath);

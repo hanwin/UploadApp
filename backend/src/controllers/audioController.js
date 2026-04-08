@@ -37,7 +37,10 @@ const uploadAudio = async (req, res) => {
       if (folder) {
         // Validate user has access to this folder
         const accessCheck = await pool.query(
-          'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2',
+          `SELECT 1
+             FROM user_folders uf
+             JOIN folders f ON f.disk_name = uf.folder_name
+            WHERE uf.user_id = $1 AND uf.folder_name = $2`,
           [req.user.id, folder]
         );
         if (accessCheck.rows.length === 0) {
@@ -46,7 +49,12 @@ const uploadAudio = async (req, res) => {
       } else {
         // Use first assigned folder
         const userFolders = await pool.query(
-          'SELECT folder_name FROM user_folders WHERE user_id = $1 ORDER BY folder_name LIMIT 1',
+          `SELECT uf.folder_name
+             FROM user_folders uf
+             JOIN folders f ON f.disk_name = uf.folder_name
+            WHERE uf.user_id = $1
+            ORDER BY uf.folder_name
+            LIMIT 1`,
           [req.user.id]
         );
         folder = userFolders.rows[0]?.folder_name;
@@ -56,6 +64,14 @@ const uploadAudio = async (req, res) => {
         return res.status(400).json({ error: 'Ingen mapp tilldelad till användaren' });
       }
       fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: saving file info to DB, folder=' + folder + ', filePath=' + filePath + '\n');
+    }
+
+    const folderCheck = await pool.query(
+      'SELECT 1 FROM folders WHERE disk_name = $1 LIMIT 1',
+      [folder]
+    );
+    if (folderCheck.rows.length === 0) {
+      return res.status(400).json({ error: 'Mappen finns inte' });
     }
     
     // Decode originalname from latin1 to utf-8 (multer encoding) and normalize
