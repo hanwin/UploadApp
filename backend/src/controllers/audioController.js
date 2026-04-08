@@ -35,12 +35,17 @@ const uploadAudio = async (req, res) => {
       // Get user's assigned folders from user_folders table
       folder = req.query.folder;
       if (folder) {
+        const folderExists = await pool.query(
+          'SELECT 1 FROM folders WHERE disk_name = $1 LIMIT 1',
+          [folder]
+        );
+        if (folderExists.rows.length === 0) {
+          return res.status(404).json({ error: 'Mappen finns inte' });
+        }
+
         // Validate user has access to this folder
         const accessCheck = await pool.query(
-          `SELECT 1
-             FROM user_folders uf
-             JOIN folders f ON f.disk_name = uf.folder_name
-            WHERE uf.user_id = $1 AND uf.folder_name = $2`,
+          'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2',
           [req.user.id, folder]
         );
         if (accessCheck.rows.length === 0) {
@@ -71,7 +76,7 @@ const uploadAudio = async (req, res) => {
       [folder]
     );
     if (folderCheck.rows.length === 0) {
-      return res.status(400).json({ error: 'Mappen finns inte' });
+      return res.status(404).json({ error: 'Mappen finns inte' });
     }
     
     // Decode originalname from latin1 to utf-8 (multer encoding) and normalize

@@ -33,11 +33,17 @@ async function setUploadFolderPath(req, res, next) {
     } else {
       folderName = req.query.folder;
       if (folderName) {
+        const folderExists = await pool.query(
+          'SELECT 1 FROM folders WHERE disk_name = $1 LIMIT 1',
+          [folderName]
+        );
+        if (folderExists.rows.length === 0) {
+          debugLog('setUploadFolderPath: folder does not exist=' + folderName);
+          return res.status(404).json({ error: 'Mappen finns inte' });
+        }
+
         const accessCheck = await pool.query(
-          `SELECT 1
-             FROM user_folders uf
-             JOIN folders f ON f.disk_name = uf.folder_name
-            WHERE uf.user_id = $1 AND uf.folder_name = $2`,
+          'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2',
           [req.user.id, folderName]
         );
         if (accessCheck.rows.length === 0) {
@@ -67,7 +73,7 @@ async function setUploadFolderPath(req, res, next) {
     );
     if (folderCheck.rows.length === 0) {
       debugLog('setUploadFolderPath: unknown folderName=' + folderName);
-      return res.status(400).json({ error: 'Mappen finns inte' });
+      return res.status(404).json({ error: 'Mappen finns inte' });
     }
 
     // Use folder names managed by folders table only.
