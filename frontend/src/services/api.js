@@ -47,7 +47,7 @@ export const audioAPI = {
     }
     
     return api.post(`/audio/upload${queryParams}`, formData, {
-      timeout: 1800000, // 30 min timeout for large uploads
+      timeout: 7200000, // 2 hour timeout for large uploads
       ...options
     });
   },
