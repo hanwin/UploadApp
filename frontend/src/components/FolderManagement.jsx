@@ -34,7 +34,7 @@ function FolderManagement({ user }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderStandardTagTitle, setNewFolderStandardTagTitle] = useState('');
   const [newFolderStandardTagArtist, setNewFolderStandardTagArtist] = useState('');
-  const [editDialog, setEditDialog] = useState({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' });
+  const [editDialog, setEditDialog] = useState({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [showFiles, setShowFiles] = useState(false);
@@ -100,7 +100,6 @@ function FolderManagement({ user }) {
     setEditDialog({
       open: true,
       folder,
-      name: folder.original_name || folder.disk_name,
       standardTagTitle: folder.default_mp3_title || '',
       standardTagArtist: folder.default_mp3_artist || ''
     });
@@ -108,19 +107,14 @@ function FolderManagement({ user }) {
 
   const handleUpdateFolder = async () => {
     if (!editDialog.folder) return;
-    if (!editDialog.name.trim()) {
-      showError('Mappnamn får inte vara tomt');
-      return;
-    }
 
     try {
       await folderAPI.update(editDialog.folder.id, {
-        name: editDialog.name.trim(),
         standardTagTitle: editDialog.standardTagTitle,
         standardTagArtist: editDialog.standardTagArtist
       });
       success('Mapp uppdaterad!');
-      setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' });
+      setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
       loadFolders();
     } catch (err) {
       showError(err.response?.data?.error || 'Kunde inte uppdatera mapp');
@@ -231,7 +225,7 @@ function FolderManagement({ user }) {
                         : null
                     }
                   />
-                  <Tooltip title="Redigera mapp och standardtag MP3">
+                  <Tooltip title="Redigera standardtag MP3">
                     <IconButton
                       edge="end"
                       color="primary"
@@ -326,18 +320,11 @@ function FolderManagement({ user }) {
       </Dialog>
 
       {/* Edit Folder Dialog */}
-      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' })} maxWidth="sm" fullWidth>
+      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' })} maxWidth="sm" fullWidth>
         <DialogTitle>Redigera mapp</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
-            margin="dense"
-            label="Mappnamn"
-            fullWidth
-            value={editDialog.name}
-            onChange={(e) => setEditDialog((prev) => ({ ...prev, name: e.target.value }))}
-          />
-          <TextField
             margin="dense"
             label="Standardtag MP3 title"
             fullWidth
@@ -355,7 +342,7 @@ function FolderManagement({ user }) {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' })}>Avbryt</Button>
+          <Button onClick={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' })}>Avbryt</Button>
           <Button onClick={handleUpdateFolder} variant="contained">
             Spara
           </Button>
