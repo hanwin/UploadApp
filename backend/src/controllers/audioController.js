@@ -17,6 +17,7 @@ const uploadAudio = async (req, res) => {
     fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: file received, originalname=' + req.file.originalname + ', filename=' + req.file.filename + ', mimetype=' + req.file.mimetype + ', size=' + req.file.size + '\n');
 
     const { filename, originalname, size, path: filePath } = req.file;
+    const overwriteRequested = req.headers['x-overwrite'] === 'true';
     const shouldProcess = req.body.processAudio === 'true'; // Check if processing requested
     const deleteOriginal = req.body.deleteOriginal === 'true'; // Check if original should be deleted
     
@@ -142,6 +143,14 @@ const uploadAudio = async (req, res) => {
     );
 
     const fileId = result.rows[0].id;
+
+    // If this upload overwrote an existing file on disk, remove stale DB rows for the same path.
+    if (overwriteRequested) {
+      await pool.query(
+        'DELETE FROM audio_files WHERE id <> $1 AND file_path = $2',
+        [fileId, filePath]
+      );
+    }
 
     // If processing requested and file is WAV, start background processing
     if (shouldProcess && canonicalMimeType === 'audio/wav') {
