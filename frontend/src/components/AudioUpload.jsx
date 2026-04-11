@@ -171,6 +171,17 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
     validateAndUpload(fileExistsDialog.file, false, false, false, newName);
   };
 
+  const handleFileExistsCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setFileExistsDialog({ open: false, file: null });
+    setFile(null);
+    setUploading(false);
+    setUploadProgress(0);
+    window.location.reload();
+  };
+
   const handleFileSelected = (selectedFile) => {
     if (!selectedFile) return;
 
@@ -262,7 +273,7 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
   return (
     <>
       {/* File exists dialog */}
-      <Dialog open={fileExistsDialog.open} onClose={() => setFileExistsDialog({ open: false, file: null })}>
+      <Dialog open={fileExistsDialog.open} onClose={handleFileExistsCancel}>
         <DialogTitle>Filen finns redan</DialogTitle>
         <DialogContent>
           <Typography>En fil med samma namn finns redan i mappen. Vill du skriva över den gamla eller byta namn?</Typography>
@@ -271,6 +282,9 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
             <RenameFileInputDialog onRename={handleFileExistsRename} originalName={fileExistsDialog.file?.name} />
           </Box>
         </DialogContent>
+        <DialogActions>
+          <Button onClick={handleFileExistsCancel} color="inherit">Avbryt</Button>
+        </DialogActions>
       </Dialog>
       <Card sx={{ mb: 3 }}>
         <CardContent>
