@@ -24,9 +24,11 @@ import {
   Collapse,
   InputAdornment,
   Tooltip,
-  Autocomplete
+  Autocomplete,
+  Menu,
+  Popover
 } from '@mui/material';
-import { PersonAdd, Delete, People, Visibility, Edit, Refresh, ContentCopy } from '@mui/icons-material';
+import { PersonAdd, Delete, People, Visibility, Edit, Refresh, ContentCopy, MoreVert, KeyboardArrowDown } from '@mui/icons-material';
 import { folderAPI, userAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 import EditUserDialog from './EditUserDialog';
@@ -42,6 +44,9 @@ function UserManagement({ user, onViewAsUser }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [createNewFolder, setCreateNewFolder] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [actionMenu, setActionMenu] = useState({ anchorEl: null, user: null });
+  const [folderPopup, setFolderPopup] = useState({ anchorEl: null, user: null, selectedFolders: [] });
+  const [savingFolderPopup, setSavingFolderPopup] = useState(false);
   const { success, error: showError } = useToast();
   const folderOptions = folders
     .map((f) => f?.disk_name || f?.name)
@@ -223,6 +228,38 @@ function UserManagement({ user, onViewAsUser }) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const openActionMenu = (event, selectedUser) => {
+    setActionMenu({ anchorEl: event.currentTarget, user: selectedUser });
+  };
+
+  const closeActionMenu = () => {
+    setActionMenu({ anchorEl: null, user: null });
+  };
+
+  const openFolderPopup = (event, selectedUser) => {
+    setFolderPopup({
+      anchorEl: event.currentTarget,
+      user: selectedUser,
+      selectedFolders: normalizeFolderValues(selectedUser?.folders)
+    });
+  };
+
+  const closeFolderPopup = () => {
+    setFolderPopup({ anchorEl: null, user: null, selectedFolders: [] });
+  };
+
+  const saveFolderPopup = async () => {
+    if (!folderPopup.user) return;
+
+    setSavingFolderPopup(true);
+    try {
+      await handleUpdateFolder(folderPopup.user.id, normalizeFolderValues(folderPopup.selectedFolders));
+      closeFolderPopup();
+    } finally {
+      setSavingFolderPopup(false);
+    }
   };
 
   if (loading) {
@@ -424,17 +461,7 @@ function UserManagement({ user, onViewAsUser }) {
             </TableHead>
             <TableBody>
               {users.map((u) => (
-                <TableRow
-                  key={u.id}
-                  hover
-                  sx={{
-                    '&:hover .user-row-actions-extra, &:focus-within .user-row-actions-extra': {
-                      opacity: 1,
-                      width: 'auto',
-                      pointerEvents: 'auto'
-                    }
-                  }}
-                >
+                <TableRow key={u.id} hover>
                   <TableCell sx={{ width: { xs: 90, md: 110 }, maxWidth: { xs: 90, md: 110 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {u.username}
                   </TableCell>
@@ -461,36 +488,15 @@ function UserManagement({ user, onViewAsUser }) {
                     {u.role === 'superadmin' || u.role === 'admin' ? (
                       <Typography variant="body2" color="text.secondary">-</Typography>
                     ) : (
-                      <Autocomplete
-                        multiple
+                      <Button
                         size="small"
-                        options={folderOptions}
-                        value={normalizeFolderValues(u.folders)}
-                        onChange={(e, newValue) => handleUpdateFolder(u.id, normalizeFolderValues(newValue))}
-                        disableCloseOnSelect
-                        getOptionLabel={getFolderOptionLabel}
-                        isOptionEqualToValue={(option, value) => getFolderOptionLabel(option) === getFolderOptionLabel(value)}
-                        renderTags={(value, getTagProps) =>
-                          normalizeFolderValues(value).map((option, index) => (
-                            <Chip label={getFolderOptionLabel(option)} size="small" {...getTagProps({ index })} />
-                          ))
-                        }
-                        renderInput={(params) => (
-                          <TextField {...params} variant="outlined" size="small" />
-                        )}
-                        sx={{
-                          width: '100%',
-                          minWidth: { xs: 120, sm: 160 },
-                          maxWidth: { xs: 190, md: 250 },
-                          '& .MuiAutocomplete-tag': {
-                            maxWidth: '100%'
-                          },
-                          '& .MuiChip-label': {
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
-                          }
-                        }}
-                      />
+                        variant="text"
+                        endIcon={<KeyboardArrowDown fontSize="small" />}
+                        onClick={(event) => openFolderPopup(event, u)}
+                        sx={{ minWidth: 0, px: 0.5 }}
+                      >
+                        Visa
+                      </Button>
                     )}
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{formatDate(u.created_at)}</TableCell>
@@ -506,50 +512,14 @@ function UserManagement({ user, onViewAsUser }) {
                   >
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       {u.role !== 'superadmin' && (
-                        <>
-                          <IconButton
-                            color="primary"
-                            onClick={() => setEditUser(u)}
-                            size="small"
-                            title="Redigera användare"
-                          >
-                            <Edit />
-                          </IconButton>
-                          {u.role !== 'admin' && (
-                            <IconButton
-                              className="user-row-actions-extra"
-                              color="primary"
-                              onClick={() => onViewAsUser(u)}
-                              size="small"
-                              title="Visa som denna användare"
-                              sx={{
-                                opacity: { xs: 1, md: 0 },
-                                width: { xs: 'auto', md: 0 },
-                                overflow: 'hidden',
-                                pointerEvents: { xs: 'auto', md: 'none' },
-                                transition: 'opacity 0.2s ease'
-                              }}
-                            >
-                              <Visibility />
-                            </IconButton>
-                          )}
-                          <IconButton
-                            className="user-row-actions-extra"
-                            color="error"
-                            onClick={() => setConfirmDelete(u)}
-                            size="small"
-                            title="Ta bort användare"
-                            sx={{
-                              opacity: { xs: 1, md: 0 },
-                              width: { xs: 'auto', md: 0 },
-                              overflow: 'hidden',
-                              pointerEvents: { xs: 'auto', md: 'none' },
-                              transition: 'opacity 0.2s ease'
-                            }}
-                          >
-                            <Delete />
-                          </IconButton>
-                        </>
+                        <IconButton
+                          color="primary"
+                          onClick={(event) => openActionMenu(event, u)}
+                          size="small"
+                          title="Visa åtgärder"
+                        >
+                          <MoreVert />
+                        </IconButton>
                       )}
                     </Box>
                   </TableCell>
@@ -558,6 +528,83 @@ function UserManagement({ user, onViewAsUser }) {
             </TableBody>
           </Table>
         </TableContainer>
+
+        <Menu
+          anchorEl={actionMenu.anchorEl}
+          open={Boolean(actionMenu.anchorEl)}
+          onClose={closeActionMenu}
+        >
+          {actionMenu.user?.role !== 'admin' && (
+            <MenuItem
+              onClick={() => {
+                onViewAsUser(actionMenu.user);
+                closeActionMenu();
+              }}
+            >
+              <Visibility fontSize="small" sx={{ mr: 1 }} />
+              Visa som användare
+            </MenuItem>
+          )}
+          <MenuItem
+            onClick={() => {
+              setEditUser(actionMenu.user);
+              closeActionMenu();
+            }}
+          >
+            <Edit fontSize="small" sx={{ mr: 1 }} />
+            Redigera användare
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setConfirmDelete(actionMenu.user);
+              closeActionMenu();
+            }}
+            sx={{ color: 'error.main' }}
+          >
+            <Delete fontSize="small" sx={{ mr: 1 }} />
+            Ta bort användare
+          </MenuItem>
+        </Menu>
+
+        <Popover
+          open={Boolean(folderPopup.anchorEl)}
+          anchorEl={folderPopup.anchorEl}
+          onClose={closeFolderPopup}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        >
+          <Box sx={{ p: 1.5, width: { xs: 280, sm: 420 }, maxWidth: '90vw' }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              Mappar för {folderPopup.user?.username}
+            </Typography>
+            <Autocomplete
+              multiple
+              size="small"
+              options={folderOptions}
+              value={normalizeFolderValues(folderPopup.selectedFolders)}
+              onChange={(e, newValue) => setFolderPopup((prev) => ({ ...prev, selectedFolders: normalizeFolderValues(newValue) }))}
+              disableCloseOnSelect
+              getOptionLabel={getFolderOptionLabel}
+              isOptionEqualToValue={(option, value) => getFolderOptionLabel(option) === getFolderOptionLabel(value)}
+              renderTags={(value, getTagProps) =>
+                normalizeFolderValues(value).map((option, index) => (
+                  <Chip label={getFolderOptionLabel(option)} size="small" {...getTagProps({ index })} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField {...params} variant="outlined" size="small" label="Välj mappar" />
+              )}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 1.5 }}>
+              <Button size="small" onClick={closeFolderPopup}>
+                Avbryt
+              </Button>
+              <Button size="small" variant="contained" onClick={saveFolderPopup} disabled={savingFolderPopup}>
+                Spara
+              </Button>
+            </Box>
+          </Box>
+        </Popover>
 
         <ConfirmModal
           isOpen={!!confirmDelete}
