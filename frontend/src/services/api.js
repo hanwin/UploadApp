@@ -57,6 +57,7 @@ export const audioAPI = {
   getStreamUrl: (id) => `${API_URL}/audio/stream/${id}`,
   delete: (id) => api.delete(`/audio/${id}`),
   updateBroadcastTime: (id, broadcastTime) => api.put(`/audio/${id}/broadcast-time`, { broadcastTime }),
+  cleanupAborted: (folder, filename) => api.post('/audio/cleanup-aborted', { folder, filename }),
 };
 
 // MP3 Tags API

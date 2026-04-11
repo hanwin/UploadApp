@@ -6,7 +6,8 @@ const {
   getUserFilesById,
   streamAudio,
   deleteAudio,
-  updateBroadcastTime
+  updateBroadcastTime,
+  cleanupAbortedUpload
 } = require('../controllers/audioController');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { streamAuthMiddleware } = require('../middleware/streamAuth');
@@ -30,5 +31,6 @@ router.get('/user/:userId', authMiddleware, adminMiddleware, getUserFilesById);
 router.get('/stream/:id', streamAuthMiddleware, streamAudio); // Use special middleware for streaming
 router.delete('/:id', authMiddleware, deleteAudio);
 router.put('/:id/broadcast-time', authMiddleware, updateBroadcastTime);
+router.post('/cleanup-aborted', authMiddleware, cleanupAbortedUpload);
 
 module.exports = router;

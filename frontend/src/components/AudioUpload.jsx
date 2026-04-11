@@ -139,7 +139,14 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
         return;
       }
       if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        try {
+          await audioAPI.cleanupAborted(folderToUse, uploadFile.name);
+        } catch (cleanupErr) {
+          // Ignore cleanup errors here; user already canceled the upload.
+        }
         showError('Uppladdning avbruten');
+        window.location.reload();
+        return;
       } else {
         showError(err.response?.data?.error || 'Uppladdning misslyckades');
       }

@@ -392,15 +392,70 @@ const updateBroadcastTime = async (req, res) => {
   }
 };
 
-module.exports = {
-  uploadAudio,
-  getUserAudioFiles,
-  getAllAudioFiles,
-  getUserFilesById,
-  streamAudio,
-  deleteAudio,
-  updateBroadcastTime
+// Cleanup partially uploaded file after client abort
+const cleanupAbortedUpload = async (req, res) => {
+  try {
+    const { folder, filename } = req.body || {};
+
+    if (!folder || !filename) {
+      return res.status(400).json({ error: 'Mapp och filnamn krävs' });
+    }
+
+    if (typeof folder !== 'string' || typeof filename !== 'string') {
+      return res.status(400).json({ error: 'Ogiltiga parametrar' });
+    }
+
+    if (folder.includes('..') || folder.includes('/') || folder.includes('\\')) {
+      return res.status(400).json({ error: 'Ogiltigt mappnamn' });
+    }
+
+    const safeFilename = path.basename(filename);
+    if (!safeFilename || safeFilename === '.' || safeFilename === '..') {
+      return res.status(400).json({ error: 'Ogiltigt filnamn' });
+    }
+
+    const folderCheck = await pool.query(
+      'SELECT 1 FROM folders WHERE disk_name = $1 LIMIT 1',
+      [folder]
+    );
+    if (folderCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Mappen finns inte' });
+    }
+
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+      const accessCheck = await pool.query(
+        'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2 LIMIT 1',
+        [req.user.id, folder]
+      );
+      if (accessCheck.rows.length === 0) {
+        return res.status(403).json({ error: 'Åtkomst nekad till denna mapp' });
+      }
+    }
+
+    const targetPath = path.join('/app/uploads', folder, safeFilename);
+
+    // Never remove files that are referenced by a DB row.
+    const dbRef = await pool.query(
+      'SELECT 1 FROM audio_files WHERE file_path = $1 LIMIT 1',
+      [targetPath]
+    );
+
+    if (dbRef.rows.length > 0) {
+      return res.json({ cleaned: false, reason: 'db-reference-exists' });
+    }
+
+    if (fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+      return res.json({ cleaned: true });
+    }
+
+    return res.json({ cleaned: false, reason: 'file-not-found' });
+  } catch (error) {
+    console.error('Cleanup aborted upload error:', error);
+    return res.status(500).json({ error: 'Det gick inte att rensa avbruten uppladdning' });
+  }
 };
+
 module.exports = {
   uploadAudio,
   getUserAudioFiles,
@@ -408,5 +463,6 @@ module.exports = {
   getUserFilesById,
   streamAudio,
   deleteAudio,
-  updateBroadcastTime
+  updateBroadcastTime,
+  cleanupAbortedUpload
 };
