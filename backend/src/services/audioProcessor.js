@@ -4,6 +4,18 @@ const path = require('path');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const pool = require('../models/db');
+const { writeTags } = require('./mp3Tags');
+
+const applyTagTemplate = (template, context) => {
+  if (!template || typeof template !== 'string') {
+    return '';
+  }
+
+  return template
+    .replace(/\{filename\}/gi, context.filename || '')
+    .replace(/\{folder\}/gi, context.folder || '')
+    .trim();
+};
 
 // Function to get io instance
 function getIO() {
@@ -185,6 +197,43 @@ async function processAudioFile(fileId) {
         else reject(new Error('Failed to get output duration'));
       });
     });
+
+    const processedDisplayName = file.original_name.replace(/\.(wav|WAV)$/, '_processed.mp3');
+
+    // Apply same auto-tagging behavior as regular MP3 uploads.
+    try {
+      const folderResult = await client.query(
+        'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist FROM folders WHERE disk_name = $1 LIMIT 1',
+        [file.folder]
+      );
+
+      const folderMeta = folderResult.rows[0] || {};
+      const fullFolderName = folderMeta.original_name || folderMeta.disk_name || file.folder || '';
+      const fileBaseName = path.parse(processedDisplayName).name;
+
+      const configuredTitle = applyTagTemplate(folderMeta.default_mp3_title, {
+        filename: fileBaseName,
+        folder: fullFolderName
+      });
+      const configuredArtist = applyTagTemplate(folderMeta.default_mp3_artist, {
+        filename: fileBaseName,
+        folder: fullFolderName
+      });
+
+      const resolvedTitle = configuredTitle || fileBaseName;
+      const resolvedArtist = configuredArtist || fullFolderName;
+
+      const tagWriteResult = await writeTags(outputPath, {
+        title: resolvedTitle,
+        artist: resolvedArtist
+      });
+
+      if (!tagWriteResult.success) {
+        console.error('[AudioProcessor] Auto MP3 tag write failed:', tagWriteResult.error);
+      }
+    } catch (tagError) {
+      console.error('[AudioProcessor] Failed to auto-tag processed MP3:', tagError);
+    }
     
     console.log(`[AudioProcessor] Processing complete. Creating database entry...`);
     
@@ -197,7 +246,7 @@ async function processAudioFile(fileId) {
       [
         file.user_id,
         outputFilename,
-        file.original_name.replace(/\.(wav|WAV)$/, '_processed.mp3'),
+        processedDisplayName,
         outputPath, // Use absolute path like original file
         stats.size,
         'audio/mpeg',
@@ -215,7 +264,6 @@ async function processAudioFile(fileId) {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, file.folder);
       const currentSeqPath = path.join(folderPath, 'current.seq');
-      const processedDisplayName = file.original_name.replace(/\.(wav|WAV)$/, '_processed.mp3');
       fs.writeFileSync(currentSeqPath, processedDisplayName + '\n', 'utf-8');
       console.log(`[AudioProcessor] Updated current.seq with ${processedDisplayName}`);
     } catch (error) {
