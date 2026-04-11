@@ -390,7 +390,7 @@ function UserManagement({ user, onViewAsUser }) {
         </Collapse>
 
         <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
-          <Table size="small">
+          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHead>
               <TableRow>
                 <TableCell><strong>Användarnamn</strong></TableCell>
@@ -399,7 +399,18 @@ function UserManagement({ user, onViewAsUser }) {
                 <TableCell><strong>Roll</strong></TableCell>
                 <TableCell><strong>Mappar</strong></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Skapad</strong></TableCell>
-                <TableCell align="right"><strong>Åtgärder</strong></TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    position: 'sticky',
+                    right: 0,
+                    backgroundColor: 'background.paper',
+                    zIndex: 2,
+                    width: 130
+                  }}
+                >
+                  <strong>Åtgärder</strong>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -430,6 +441,7 @@ function UserManagement({ user, onViewAsUser }) {
                       <Autocomplete
                         multiple
                         size="small"
+                        limitTags={1}
                         options={folderOptions}
                         value={normalizeFolderValues(u.folders)}
                         onChange={(e, newValue) => handleUpdateFolder(u.id, normalizeFolderValues(newValue))}
@@ -444,13 +456,22 @@ function UserManagement({ user, onViewAsUser }) {
                         renderInput={(params) => (
                           <TextField {...params} variant="outlined" size="small" placeholder="Lägg till mapp" />
                         )}
-                        sx={{ minWidth: 200 }}
+                        sx={{ width: '100%', minWidth: 0 }}
                       />
                     )}
                   </TableCell>
                   <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>{formatDate(u.created_at)}</TableCell>
-                  <TableCell align="right">
-                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <TableCell
+                    align="right"
+                    sx={{
+                      position: 'sticky',
+                      right: 0,
+                      backgroundColor: 'background.paper',
+                      zIndex: 1,
+                      width: 130
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       {u.role !== 'superadmin' && (
                         <>
                           {u.role !== 'admin' && (
