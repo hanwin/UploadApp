@@ -78,14 +78,9 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     setFoldersLoaded(false);
     if (isAdmin && !impersonatedUserId) {
       loadFolders();
-    } else if (impersonatedUserId && sortedUserFolders.length > 0) {
-      // When impersonating, prefer the impersonated user's associated folder.
+    } else if (sortedUserFolders.length > 0) {
+      // For regular users and impersonation, load folder metadata so original names can be shown.
       loadFolders(sortedUserFolders[0]);
-    } else if (!isAdmin && sortedUserFolders.length > 0) {
-      // Regular user - set first folder if none selected in URL
-      if (!selectedFolder) {
-        setSelectedFolder(sortedUserFolders[0]);
-      }
     }
     loadFiles();
   }, [refreshTrigger, user, impersonatedUserId]);
@@ -292,8 +287,11 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     : files;
 
   const selectedFolderDisplayName = (() => {
+    const fallbackDiskName = sortedUserFolders[0] || '';
+
     if (!selectedFolder) {
-      return sortedUserFolders[0] || '';
+      const fallbackFolderObj = folders.find(f => f.disk_name === fallbackDiskName);
+      return fallbackFolderObj ? (fallbackFolderObj.original_name || fallbackFolderObj.disk_name) : fallbackDiskName;
     }
 
     const folderObj = folders.find(f => f.disk_name === selectedFolder);
