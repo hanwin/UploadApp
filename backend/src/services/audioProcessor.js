@@ -235,29 +235,68 @@ async function processAudioFile(fileId) {
       console.error('[AudioProcessor] Failed to auto-tag processed MP3:', tagError);
     }
     
-    console.log(`[AudioProcessor] Processing complete. Creating database entry...`);
-    
-    // Insert processed file as new audio_files entry
-    const insertResult = await client.query(
-      `INSERT INTO audio_files 
-       (user_id, filename, original_name, file_path, file_size, mime_type, duration, folder, is_processed_version, processing_status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
-       RETURNING id`,
-      [
-        file.user_id,
-        outputFilename,
-        processedDisplayName,
-        outputPath, // Use absolute path like original file
-        stats.size,
-        'audio/mpeg',
-        duration,
-        file.folder,
-        true,
-        'completed'  // Processing status for the new MP3 file
-      ]
+    console.log(`[AudioProcessor] Processing complete. Upserting database entry...`);
+
+    // Reuse existing processed row for same output path (overwrite behavior).
+    const existingProcessedResult = await client.query(
+      `SELECT id
+         FROM audio_files
+        WHERE file_path = $1
+          AND is_processed_version = true
+        LIMIT 1`,
+      [outputPath]
     );
-    
-    const processedFileId = insertResult.rows[0].id;
+
+    let processedFileId;
+    if (existingProcessedResult.rows.length > 0) {
+      processedFileId = existingProcessedResult.rows[0].id;
+      await client.query(
+        `UPDATE audio_files
+            SET user_id = $1,
+                filename = $2,
+                original_name = $3,
+                file_size = $4,
+                mime_type = $5,
+                duration = $6,
+                folder = $7,
+                is_processed_version = true,
+                processing_status = 'completed',
+                uploaded_at = CURRENT_TIMESTAMP
+          WHERE id = $8`,
+        [
+          file.user_id,
+          outputFilename,
+          processedDisplayName,
+          stats.size,
+          'audio/mpeg',
+          duration,
+          file.folder,
+          processedFileId
+        ]
+      );
+      console.log(`[AudioProcessor] Updated existing processed DB row ${processedFileId}`);
+    } else {
+      const insertResult = await client.query(
+        `INSERT INTO audio_files 
+         (user_id, filename, original_name, file_path, file_size, mime_type, duration, folder, is_processed_version, processing_status) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) 
+         RETURNING id`,
+        [
+          file.user_id,
+          outputFilename,
+          processedDisplayName,
+          outputPath, // Use absolute path like original file
+          stats.size,
+          'audio/mpeg',
+          duration,
+          file.folder,
+          true,
+          'completed'
+        ]
+      );
+      processedFileId = insertResult.rows[0].id;
+      console.log(`[AudioProcessor] Created new processed DB row ${processedFileId}`);
+    }
     
     // Write current.seq with processed filename in folder
     try {
