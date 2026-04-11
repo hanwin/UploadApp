@@ -53,6 +53,43 @@ const createFolder = async (req, res) => {
   }
 };
 
+// Update folder metadata (admin only)
+const updateFolder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, defaultMp3Title, defaultMp3Artist } = req.body;
+
+    const folderResult = await pool.query('SELECT * FROM folders WHERE id = $1', [id]);
+    if (folderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Mappen hittades inte' });
+    }
+
+    const current = folderResult.rows[0];
+    const trimmedName = typeof name === 'string' ? name.trim() : current.original_name;
+    if (!trimmedName) {
+      return res.status(400).json({ error: 'Mappnamn krävs' });
+    }
+
+    const normalizedTitle = typeof defaultMp3Title === 'string' ? defaultMp3Title.trim() : (current.default_mp3_title || null);
+    const normalizedArtist = typeof defaultMp3Artist === 'string' ? defaultMp3Artist.trim() : (current.default_mp3_artist || null);
+
+    const result = await pool.query(
+      `UPDATE folders
+          SET original_name = $1,
+              default_mp3_title = $2,
+              default_mp3_artist = $3
+        WHERE id = $4
+      RETURNING *`,
+      [trimmedName, normalizedTitle || null, normalizedArtist || null, id]
+    );
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Update folder error:', error);
+    res.status(500).json({ error: 'Det gick inte att uppdatera mappen' });
+  }
+};
+
 // Delete folder (admin only)
 const deleteFolder = async (req, res) => {
   try {
@@ -100,5 +137,6 @@ const deleteFolder = async (req, res) => {
 module.exports = {
   getAllFolders,
   createFolder,
+  updateFolder,
   deleteFolder
 };

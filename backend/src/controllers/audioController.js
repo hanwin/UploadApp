@@ -6,6 +6,17 @@ const { processAudioInBackground } = require('../services/audioProcessor');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const { writeTags } = require('../services/mp3Tags');
 
+const applyTagTemplate = (template, context) => {
+  if (!template || typeof template !== 'string') {
+    return '';
+  }
+
+  return template
+    .replace(/\{filename\}/gi, context.filename || '')
+    .replace(/\{folder\}/gi, context.folder || '')
+    .trim();
+};
+
 // Upload audio file
 const uploadAudio = async (req, res) => {
   try {
@@ -74,12 +85,13 @@ const uploadAudio = async (req, res) => {
     }
 
     const folderCheck = await pool.query(
-      'SELECT 1 FROM folders WHERE disk_name = $1 LIMIT 1',
+      'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist FROM folders WHERE disk_name = $1 LIMIT 1',
       [folder]
     );
     if (folderCheck.rows.length === 0) {
       return res.status(404).json({ error: 'Mappen finns inte' });
     }
+    const folderMeta = folderCheck.rows[0];
     
     // Decode originalname from latin1 to utf-8 (multer encoding) and normalize
     const decodedOriginalName = Buffer.from(originalname, 'latin1').toString('utf8').normalize('NFC');
@@ -155,16 +167,24 @@ const uploadAudio = async (req, res) => {
 
     // Auto-populate MP3 tags: title = filename (without extension), artist = full folder name.
     if (canonicalMimeType === 'audio/mpeg') {
-      const folderNameResult = await pool.query(
-        'SELECT original_name, disk_name FROM folders WHERE disk_name = $1 LIMIT 1',
-        [dbFolder]
-      );
-      const fullFolderName = folderNameResult.rows[0]?.original_name || folderNameResult.rows[0]?.disk_name || dbFolder;
-      const defaultTitle = path.parse(decodedOriginalName).name;
+      const fullFolderName = folderMeta.original_name || folderMeta.disk_name || dbFolder;
+      const fileBaseName = path.parse(decodedOriginalName).name;
+
+      const configuredTitle = applyTagTemplate(folderMeta.default_mp3_title, {
+        filename: fileBaseName,
+        folder: fullFolderName
+      });
+      const configuredArtist = applyTagTemplate(folderMeta.default_mp3_artist, {
+        filename: fileBaseName,
+        folder: fullFolderName
+      });
+
+      const resolvedTitle = configuredTitle || fileBaseName;
+      const resolvedArtist = configuredArtist || fullFolderName;
 
       const tagWriteResult = await writeTags(filePath, {
-        title: defaultTitle,
-        artist: fullFolderName
+        title: resolvedTitle,
+        artist: resolvedArtist
       });
 
       if (!tagWriteResult.success) {

@@ -26,6 +26,12 @@ const ensureTables = async () => {
     )
   `);
 
+  await pool.query(`
+    ALTER TABLE folders
+    ADD COLUMN IF NOT EXISTS default_mp3_title VARCHAR(255),
+    ADD COLUMN IF NOT EXISTS default_mp3_artist VARCHAR(255)
+  `);
+
   // Create password_reset_tokens table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

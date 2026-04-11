@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getAllFolders, createFolder, deleteFolder } = require('../controllers/folderController');
+const { getAllFolders, createFolder, updateFolder, deleteFolder } = require('../controllers/folderController');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
 // All routes require authentication
@@ -11,6 +11,9 @@ router.get('/', getAllFolders);
 
 // Create folder (admin only)
 router.post('/', adminMiddleware, createFolder);
+
+// Update folder metadata (admin only)
+router.put('/:id', adminMiddleware, updateFolder);
 
 // Delete folder (admin only)
 router.delete('/:id', adminMiddleware, deleteFolder);
