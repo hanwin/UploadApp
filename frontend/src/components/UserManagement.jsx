@@ -390,12 +390,12 @@ function UserManagement({ user, onViewAsUser }) {
         </Collapse>
 
         <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
-          <Table size="small" sx={{ tableLayout: 'fixed', width: '100%' }}>
+          <Table size="small" sx={{ width: '100%' }}>
             <TableHead>
               <TableRow>
                 <TableCell><strong>Användarnamn</strong></TableCell>
                 <TableCell><strong>Namn</strong></TableCell>
-                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}><strong>E-post</strong></TableCell>
+                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>E-post</strong></TableCell>
                 <TableCell><strong>Roll</strong></TableCell>
                 <TableCell><strong>Mappar</strong></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Skapad</strong></TableCell>
@@ -406,7 +406,7 @@ function UserManagement({ user, onViewAsUser }) {
                     right: 0,
                     backgroundColor: 'background.paper',
                     zIndex: 2,
-                    width: 130
+                    width: 120
                   }}
                 >
                   <strong>Åtgärder</strong>
@@ -416,9 +416,11 @@ function UserManagement({ user, onViewAsUser }) {
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id} hover>
-                  <TableCell>{u.username}</TableCell>
-                  <TableCell>{u.name || ''}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{u.email}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{u.username}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{u.name || ''}</TableCell>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: 240 }}>
+                    {u.email}
+                  </TableCell>
                   <TableCell>
                     {u.role === 'superadmin' ? (
                       <Chip label="Superadmin" color="secondary" size="small" />
@@ -441,7 +443,6 @@ function UserManagement({ user, onViewAsUser }) {
                       <Autocomplete
                         multiple
                         size="small"
-                        limitTags={1}
                         options={folderOptions}
                         value={normalizeFolderValues(u.folders)}
                         onChange={(e, newValue) => handleUpdateFolder(u.id, normalizeFolderValues(newValue))}
@@ -456,7 +457,18 @@ function UserManagement({ user, onViewAsUser }) {
                         renderInput={(params) => (
                           <TextField {...params} variant="outlined" size="small" placeholder="Lägg till mapp" />
                         )}
-                        sx={{ width: '100%', minWidth: 0 }}
+                        sx={{
+                          width: '100%',
+                          minWidth: { xs: 120, sm: 160 },
+                          maxWidth: { xs: 220, md: 320 },
+                          '& .MuiAutocomplete-tag': {
+                            maxWidth: '100%'
+                          },
+                          '& .MuiChip-label': {
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }
+                        }}
                       />
                     )}
                   </TableCell>
@@ -468,7 +480,7 @@ function UserManagement({ user, onViewAsUser }) {
                       right: 0,
                       backgroundColor: 'background.paper',
                       zIndex: 1,
-                      width: 130
+                      width: 120
                     }}
                   >
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
