@@ -51,20 +51,24 @@ function hasExistingFile(filePath, uploadsRoot) {
   return { exists: false, resolvedPath: null, candidates };
 }
 
-async function syncDbWithFilesystem() {
-  const dryRun = process.argv.includes('--dry-run');
+async function syncDbWithFilesystem(options = {}) {
+  const dryRun = options.dryRun === true;
+  const logPrefix = options.logPrefix ? `${options.logPrefix} ` : '';
   const uploadsRoot = resolveUploadsRoot();
-  console.log(`Uploads root: ${uploadsRoot}`);
-  console.log(`Mode: ${dryRun ? 'DRY RUN (no deletions)' : 'DELETE MISSING DB ROWS'}`);
+  console.log(`${logPrefix}Uploads root: ${uploadsRoot}`);
+  console.log(`${logPrefix}Mode: ${dryRun ? 'DRY RUN (no deletions)' : 'DELETE MISSING DB ROWS AND DUPLICATES'}`);
 
   const result = await pool.query(
-    'SELECT id, original_name, file_path, folder, uploaded_at FROM audio_files ORDER BY id ASC'
+    'SELECT id, original_name, file_path, folder, uploaded_at FROM audio_files ORDER BY uploaded_at ASC'
   );
 
-  console.log(`Checked rows: ${result.rows.length}`);
+  console.log(`${logPrefix}Checked rows: ${result.rows.length}`);
 
   const missing = [];
+  const duplicates = [];
 
+  // Step 1: Find missing files and identify duplicates
+  const filePathGroups = {};
   for (const row of result.rows) {
     const fileCheck = hasExistingFile(row.file_path, uploadsRoot);
     if (!fileCheck.exists) {
@@ -72,35 +76,71 @@ async function syncDbWithFilesystem() {
         ...row,
         checked_paths: fileCheck.candidates
       });
+    } else {
+      // Group by file_path to find duplicates
+      if (!filePathGroups[row.file_path]) {
+        filePathGroups[row.file_path] = [];
+      }
+      filePathGroups[row.file_path].push(row);
     }
   }
 
-  if (missing.length === 0) {
-    console.log('No missing files found. Database is already in sync.');
+  // Step 2: Find duplicate file_paths (multiple DB rows pointing to same file)
+  for (const filePath in filePathGroups) {
+    const group = filePathGroups[filePath];
+    if (group.length > 1) {
+      // Keep the latest (last in sorted array), remove all others
+      const latest = group[group.length - 1];
+      for (let i = 0; i < group.length - 1; i++) {
+        duplicates.push(group[i]);
+      }
+    }
+  }
+
+  // Report findings
+  console.log(`${logPrefix}Missing files: ${missing.length}`);
+  console.log(`${logPrefix}Duplicate DB rows: ${duplicates.length}`);
+
+  if (missing.length === 0 && duplicates.length === 0) {
+    console.log(`${logPrefix}No issues found. Database is already in sync.`);
     return;
   }
 
-  console.log(`Missing files in filesystem: ${missing.length}`);
-  for (const entry of missing) {
-    console.log(`- id=${entry.id} folder=${entry.folder || '-'} original_name="${entry.original_name}" file_path="${entry.file_path}"`);
+  if (missing.length > 0) {
+    console.log(`${logPrefix}Missing in filesystem:`);
+    for (const entry of missing) {
+      console.log(`${logPrefix}  - id=${entry.id} folder="${entry.folder || '-'}" original_name="${entry.original_name}"`);
+    }
+  }
+
+  if (duplicates.length > 0) {
+    console.log(`${logPrefix}Duplicate DB rows (keeping latest):`);
+    for (const entry of duplicates) {
+      console.log(`${logPrefix}  - id=${entry.id} uploaded_at=${entry.uploaded_at} file_path="${entry.file_path}"`);
+    }
   }
 
   if (dryRun) {
-    console.log('Dry run complete. No rows deleted.');
+    console.log(`${logPrefix}Dry run complete. No rows deleted.`);
     return;
   }
 
-  const ids = missing.map(item => item.id);
+  const idsToDelete = [...missing, ...duplicates].map(item => item.id);
+
+  if (idsToDelete.length === 0) {
+    console.log(`${logPrefix}Nothing to delete.`);
+    return;
+  }
 
   await pool.query('BEGIN');
   try {
     const deleteResult = await pool.query(
       'DELETE FROM audio_files WHERE id = ANY($1::int[])',
-      [ids]
+      [idsToDelete]
     );
 
     await pool.query('COMMIT');
-    console.log(`Deleted rows from audio_files: ${deleteResult.rowCount}`);
+    console.log(`${logPrefix}Deleted ${deleteResult.rowCount} rows from audio_files (${missing.length} missing + ${duplicates.length} duplicates)`);
   } catch (error) {
     await pool.query('ROLLBACK');
     throw error;
@@ -109,7 +149,7 @@ async function syncDbWithFilesystem() {
 
 async function main() {
   try {
-    await syncDbWithFilesystem();
+    await syncDbWithFilesystem({ dryRun: process.argv.includes('--dry-run') });
     process.exit(0);
   } catch (error) {
     console.error('Sync failed:', error.message);
@@ -122,3 +162,7 @@ async function main() {
 if (require.main === module) {
   main();
 }
+
+module.exports = {
+  syncDbWithFilesystem
+};

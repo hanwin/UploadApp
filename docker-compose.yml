@@ -47,6 +47,10 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-true}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:81}
+      DB_FILE_SYNC_ENABLED: ${DB_FILE_SYNC_ENABLED:-true}
+      DB_FILE_SYNC_CRON: ${DB_FILE_SYNC_CRON:-17 3 * * *}
+      DB_FILE_SYNC_TZ: ${DB_FILE_SYNC_TZ:-Europe/Stockholm}
+      DB_FILE_SYNC_RUN_ON_STARTUP: ${DB_FILE_SYNC_RUN_ON_STARTUP:-false}
     volumes:
       - ./backend/uploads:/app/uploads
       - ./backend/src:/app/src

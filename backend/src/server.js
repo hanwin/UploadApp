@@ -12,6 +12,7 @@ const userRoutes = require('./routes/users');
 const folderRoutes = require('./routes/folders');
 const mp3TagsRoutes = require('./routes/mp3tags');
 const { startScheduleChecker } = require('./services/scheduleService');
+const { startDbFileSyncCron } = require('./services/dbFileSyncCronService');
 const testUploadRoutes = require('./routes/testupload');
 
 const app = express();
@@ -115,6 +116,9 @@ pool.query('SELECT NOW()')
       
       // Start schedule checker
       startScheduleChecker();
+
+      // Start DB/filesystem sync cron
+      startDbFileSyncCron();
     });
   })
   .catch((err) => {
