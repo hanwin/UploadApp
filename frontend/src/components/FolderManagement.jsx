@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardContent,
@@ -21,13 +22,13 @@ import {
   ListItemIcon,
   Tooltip
 } from '@mui/material';
-import { Delete, Add, Folder, FolderOpen, Edit } from '@mui/icons-material';
+import { Delete, Add, Folder, Edit } from '@mui/icons-material';
 import { folderAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from '../contexts/ToastContext';
-import AudioList from './AudioList';
 
 function FolderManagement({ user }) {
+  const navigate = useNavigate();
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -36,8 +37,6 @@ function FolderManagement({ user }) {
   const [newFolderStandardTagArtist, setNewFolderStandardTagArtist] = useState('');
   const [editDialog, setEditDialog] = useState({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
-  const [selectedFolder, setSelectedFolder] = useState(null);
-  const [showFiles, setShowFiles] = useState(false);
   const { success, error: showError } = useToast();
 
   useEffect(() => {
@@ -132,34 +131,13 @@ function FolderManagement({ user }) {
   };
 
   const handleFolderClick = (folder) => {
-    setSelectedFolder(folder.disk_name);
-    setShowFiles(true);
+    navigate(`/files/${encodeURIComponent(folder.disk_name)}`);
   };
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
         <CircularProgress />
-      </Box>
-    );
-  }
-
-  // If showing files for a selected folder
-  if (showFiles && selectedFolder) {
-    return (
-      <Box>
-        <Button 
-          onClick={() => setShowFiles(false)}
-          startIcon={<Folder />}
-          sx={{ mb: 2 }}
-        >
-          Tillbaka till mappar
-        </Button>
-        <AudioList 
-          user={{ ...user, folders: [selectedFolder] }}
-          refreshTrigger={0}
-          onUploadSuccess={() => {}}
-        />
       </Box>
     );
   }
