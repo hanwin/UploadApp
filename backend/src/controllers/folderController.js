@@ -71,9 +71,8 @@ const updateFolder = async (req, res) => {
     }
 
     const current = folderResult.rows[0];
-    const trimmedName = typeof name === 'string' ? name.trim() : current.original_name;
-    if (!trimmedName) {
-      return res.status(400).json({ error: 'Mappnamn krävs' });
+    if (typeof name === 'string' && name.trim() !== current.original_name) {
+      return res.status(400).json({ error: 'Mappnamn kan inte ändras' });
     }
 
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
@@ -83,12 +82,11 @@ const updateFolder = async (req, res) => {
 
     const result = await pool.query(
       `UPDATE folders
-          SET original_name = $1,
-              default_mp3_title = $2,
-              default_mp3_artist = $3
-        WHERE id = $4
+          SET default_mp3_title = $1,
+              default_mp3_artist = $2
+        WHERE id = $3
       RETURNING *`,
-      [trimmedName, normalizedTitle || null, normalizedArtist || null, id]
+      [normalizedTitle || null, normalizedArtist || null, id]
     );
 
     res.json(result.rows[0]);
