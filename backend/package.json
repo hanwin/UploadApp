@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "init-db": "node src/models/initDb.js",
     "reset-test-data": "node scripts/reset-for-testing.js",
-    "check-id3-encoding": "node scripts/check-id3-encoding.js"
+    "check-id3-encoding": "node scripts/check-id3-encoding.js",
+    "sync-db-files": "node scripts/sync-db-with-filesystem.js"
   },
   "keywords": [
     "audio",
