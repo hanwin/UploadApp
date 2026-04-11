@@ -1,19 +1,18 @@
 const NodeID3 = require('node-id3');
 const fs = require('fs').promises;
-const path = require('path');
+const iconv = require('iconv-lite');
 
-function toLatin1TagField(value, length) {
+function toCp1252TagField(value, length) {
   const input = (value || '').toString().normalize('NFC');
   const field = Buffer.alloc(length, 0x00);
-  const encoded = Buffer.from(input, 'latin1');
+  const encoded = iconv.encode(input, 'windows-1252');
   encoded.copy(field, 0, 0, Math.min(encoded.length, length));
   return field;
 }
 
-function readLatin1TagField(buffer, start, length) {
-  return buffer
-    .slice(start, start + length)
-    .toString('latin1')
+function readCp1252TagField(buffer, start, length) {
+  return iconv
+    .decode(buffer.slice(start, start + length), 'windows-1252')
     .replace(/\x00+$/g, '')
     .trim();
 }
@@ -24,8 +23,8 @@ async function writeId3v1Tag(filePath, tags) {
     const stat = await handle.stat();
     const id3v1 = Buffer.alloc(128, 0x00);
     id3v1.write('TAG', 0, 3, 'ascii');
-    toLatin1TagField(tags.title, 30).copy(id3v1, 3);
-    toLatin1TagField(tags.artist, 30).copy(id3v1, 33);
+    toCp1252TagField(tags.title, 30).copy(id3v1, 3);
+    toCp1252TagField(tags.artist, 30).copy(id3v1, 33);
     // Leave album/year/comment empty when only title and artist are used.
     id3v1[127] = 255; // Unknown genre
 
@@ -59,8 +58,8 @@ async function readId3v1Tag(filePath) {
     }
 
     return {
-      title: readLatin1TagField(tail, 3, 30),
-      artist: readLatin1TagField(tail, 33, 30)
+      title: readCp1252TagField(tail, 3, 30),
+      artist: readCp1252TagField(tail, 33, 30)
     };
   } finally {
     await handle.close();
