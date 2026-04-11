@@ -192,6 +192,17 @@ const uploadAudio = async (req, res) => {
       }
     }
 
+    // Write current.seq with filename in folder
+    try {
+      const uploadsRoot = path.join(__dirname, '../../uploads');
+      const folderPath = path.join(uploadsRoot, dbFolder);
+      const currentSeqPath = path.join(folderPath, 'current.seq');
+      fs.writeFileSync(currentSeqPath, decodedOriginalName + '\n', 'utf-8');
+    } catch (error) {
+      console.error('Failed to write current.seq:', error);
+      // Don't fail the upload if current.seq writing fails
+    }
+
     // If processing requested and file is WAV, start background processing
     if (shouldProcess && canonicalMimeType === 'audio/wav') {
       console.log(`Starting background processing for file ${fileId}`);

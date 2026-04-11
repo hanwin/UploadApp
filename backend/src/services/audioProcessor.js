@@ -1,7 +1,8 @@
 const { spawn } = require('child_process');
 const { promisify } = require('util');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = require('fs').promises;
 const pool = require('../models/db');
 
 // Function to get io instance
@@ -161,7 +162,7 @@ async function processAudioFile(fileId) {
     console.log(`[AudioProcessor] FFmpeg completed`);
     
     // Get processed file stats
-    const stats = await fs.stat(outputPath);
+    const stats = await fsPromises.stat(outputPath);
     
     // Get audio duration of processed file
     const ffprobeArgs2 = [
@@ -209,6 +210,19 @@ async function processAudioFile(fileId) {
     
     const processedFileId = insertResult.rows[0].id;
     
+    // Write current.seq with processed filename in folder
+    try {
+      const uploadsRoot = path.join(__dirname, '../../uploads');
+      const folderPath = path.join(uploadsRoot, file.folder);
+      const currentSeqPath = path.join(folderPath, 'current.seq');
+      const processedDisplayName = file.original_name.replace(/\.(wav|WAV)$/, '_processed.mp3');
+      fs.writeFileSync(currentSeqPath, processedDisplayName + '\n', 'utf-8');
+      console.log(`[AudioProcessor] Updated current.seq with ${processedDisplayName}`);
+    } catch (error) {
+      console.error(`[AudioProcessor] Failed to write current.seq:`, error);
+      // Don't fail processing if current.seq writing fails
+    }
+    
     // Update original file with reference to processed version
     await client.query(
       'UPDATE audio_files SET processing_status = $1, processed_file_id = $2 WHERE id = $3',
@@ -244,9 +258,9 @@ async function processAudioFile(fileId) {
       
       try {
         // Delete physical file
-        const fileExists = await fs.access(inputPath).then(() => true).catch(() => false);
+        const fileExists = await fsPromises.access(inputPath).then(() => true).catch(() => false);
         if (fileExists) {
-          await fs.unlink(inputPath);
+          await fsPromises.unlink(inputPath);
           console.log(`[AudioProcessor] Physical file deleted: ${inputPath}`);
         }
         
