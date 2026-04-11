@@ -9,7 +9,6 @@ import {
   Box,
   CircularProgress,
   Typography,
-  Grid,
   Chip
 } from '@mui/material';
 import { MusicNote, Close, Save } from '@mui/icons-material';
@@ -19,15 +18,7 @@ import { useToast } from '../contexts/ToastContext';
 function Mp3TagsDialog({ open, onClose, file }) {
   const [tags, setTags] = useState({
     title: '',
-    artist: '',
-    album: '',
-    year: '',
-    comment: '',
-    genre: '',
-    trackNumber: '',
-    bpm: '',
-    composer: '',
-    copyright: '',
+    artist: ''
   });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -81,15 +72,7 @@ function Mp3TagsDialog({ open, onClose, file }) {
       await mp3TagsAPI.remove(file.id);
       setTags({
         title: '',
-        artist: '',
-        album: '',
-        year: '',
-        comment: '',
-        genre: '',
-        trackNumber: '',
-        bpm: '',
-        composer: '',
-        copyright: '',
+        artist: ''
       });
       success('Alla taggar borttagna!');
     } catch (err) {
@@ -129,10 +112,9 @@ function Mp3TagsDialog({ open, onClose, file }) {
         ) : (
           <Box sx={{ pt: 2 }}>
             <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Grundläggande information
+              Title och artist
             </Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 3 }}>
                 <TextField
                   fullWidth
                   label="Titel"
@@ -140,8 +122,7 @@ function Mp3TagsDialog({ open, onClose, file }) {
                   onChange={handleChange('title')}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
+              
                 <TextField
                   fullWidth
                   label="Artist"
@@ -149,90 +130,7 @@ function Mp3TagsDialog({ open, onClose, file }) {
                   onChange={handleChange('artist')}
                   variant="outlined"
                 />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Album"
-                  value={tags.album || ''}
-                  onChange={handleChange('album')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="År"
-                  value={tags.year || ''}
-                  onChange={handleChange('year')}
-                  variant="outlined"
-                  placeholder="YYYY"
-                />
-              </Grid>
-            </Grid>
-
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 3 }}>
-              Ytterligare information
-            </Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Genre"
-                  value={tags.genre || ''}
-                  onChange={handleChange('genre')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Spårnummer"
-                  value={tags.trackNumber || ''}
-                  onChange={handleChange('trackNumber')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Kompositör"
-                  value={tags.composer || ''}
-                  onChange={handleChange('composer')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="BPM"
-                  value={tags.bpm || ''}
-                  onChange={handleChange('bpm')}
-                  variant="outlined"
-                  type="number"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Copyright"
-                  value={tags.copyright || ''}
-                  onChange={handleChange('copyright')}
-                  variant="outlined"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Kommentar"
-                  value={tags.comment || ''}
-                  onChange={handleChange('comment')}
-                  variant="outlined"
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-            </Grid>
+            </Box>
           </Box>
         )}
       </DialogContent>

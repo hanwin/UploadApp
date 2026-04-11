@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { processAudioInBackground } = require('../services/audioProcessor');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
+const { writeTags } = require('../services/mp3Tags');
 
 // Upload audio file
 const uploadAudio = async (req, res) => {
@@ -150,6 +151,25 @@ const uploadAudio = async (req, res) => {
         'DELETE FROM audio_files WHERE id <> $1 AND file_path = $2',
         [fileId, filePath]
       );
+    }
+
+    // Auto-populate MP3 tags: title = filename (without extension), artist = full folder name.
+    if (canonicalMimeType === 'audio/mpeg') {
+      const folderNameResult = await pool.query(
+        'SELECT original_name, disk_name FROM folders WHERE disk_name = $1 LIMIT 1',
+        [dbFolder]
+      );
+      const fullFolderName = folderNameResult.rows[0]?.original_name || folderNameResult.rows[0]?.disk_name || dbFolder;
+      const defaultTitle = path.parse(decodedOriginalName).name;
+
+      const tagWriteResult = await writeTags(filePath, {
+        title: defaultTitle,
+        artist: fullFolderName
+      });
+
+      if (!tagWriteResult.success) {
+        console.error('Auto MP3 tag write failed:', tagWriteResult.error);
+      }
     }
 
     // If processing requested and file is WAV, start background processing

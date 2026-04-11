@@ -14,16 +14,7 @@ async function readTags(filePath) {
       success: true,
       tags: {
         title: tags.title || '',
-        artist: tags.artist || '',
-        album: tags.album || '',
-        year: tags.year || '',
-        comment: tags.comment?.text || '',
-        genre: tags.genre || '',
-        trackNumber: tags.trackNumber || '',
-        bpm: tags.bpm || '',
-        composer: tags.composer || '',
-        copyright: tags.copyright || '',
-        encodingSettings: tags.encodingSettings || '',
+        artist: tags.artist || ''
       }
     };
   } catch (error) {
@@ -43,22 +34,10 @@ async function readTags(filePath) {
  */
 async function writeTags(filePath, tags) {
   try {
-    // Prepare tags object for node-id3
+    // Only allow title and artist in this application.
     const id3Tags = {
       title: tags.title,
-      artist: tags.artist,
-      album: tags.album,
-      year: tags.year,
-      comment: {
-        language: 'swe',
-        text: tags.comment || ''
-      },
-      genre: tags.genre,
-      trackNumber: tags.trackNumber,
-      bpm: tags.bpm,
-      composer: tags.composer,
-      copyright: tags.copyright,
-      encodingSettings: tags.encodingSettings,
+      artist: tags.artist
     };
 
     // Remove undefined values
