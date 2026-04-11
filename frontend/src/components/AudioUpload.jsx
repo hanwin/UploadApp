@@ -21,8 +21,8 @@ import { audioAPI } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 
 function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId }) {
-    const [fileExistsDialog, setFileExistsDialog] = useState({ open: false, file: null });
-    const [overwrite, setOverwrite] = useState(false);
+  const [fileExistsDialog, setFileExistsDialog] = useState({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
+  const [overwrite, setOverwrite] = useState(false);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -134,7 +134,12 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
       // Special handling for file exists error
       const existsMatch = err.response?.data?.error?.match?.(/^FILE_EXISTS:(.+)$/);
       if (existsMatch) {
-        setFileExistsDialog({ open: true, file: selectedFile });
+        setFileExistsDialog({
+          open: true,
+          file: selectedFile,
+          shouldProcess,
+          shouldDeleteOriginal
+        });
         setUploading(false);
         return;
       }
@@ -160,22 +165,24 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
 
   // Handle overwrite or rename dialog actions (must be top-level for Dialog)
   const handleFileExistsOverwrite = () => {
-    setFileExistsDialog({ open: false, file: null });
+    const { file: existingFile, shouldProcess, shouldDeleteOriginal } = fileExistsDialog;
+    setFileExistsDialog({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
     // Retry upload with overwrite header
-    validateAndUpload(fileExistsDialog.file, false, false, true);
+    validateAndUpload(existingFile, shouldProcess, shouldDeleteOriginal, true);
   };
 
   const handleFileExistsRename = (newName) => {
-    setFileExistsDialog({ open: false, file: null });
+    const { file: existingFile, shouldProcess, shouldDeleteOriginal } = fileExistsDialog;
+    setFileExistsDialog({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
     // Retry upload with new name
-    validateAndUpload(fileExistsDialog.file, false, false, false, newName);
+    validateAndUpload(existingFile, shouldProcess, shouldDeleteOriginal, false, newName);
   };
 
   const handleFileExistsCancel = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    setFileExistsDialog({ open: false, file: null });
+    setFileExistsDialog({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
     setFile(null);
     setUploading(false);
     setUploadProgress(0);
