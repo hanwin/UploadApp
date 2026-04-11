@@ -52,7 +52,7 @@ services:
       DB_FILE_SYNC_TZ: ${DB_FILE_SYNC_TZ:-Europe/Stockholm}
       DB_FILE_SYNC_RUN_ON_STARTUP: ${DB_FILE_SYNC_RUN_ON_STARTUP:-false}
     volumes:
-      - ./backend/uploads:/app/uploads
+      - /mnt/nas_audio_upload:/app/uploads
       - ./backend/src:/app/src
     depends_on:
       postgres:
