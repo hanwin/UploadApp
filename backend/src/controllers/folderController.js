@@ -18,7 +18,7 @@ const getAllFolders = async (req, res) => {
 const { normalizeFolderName } = require('../utils/normalizeFolderName');
 const createFolder = async (req, res) => {
   try {
-    const { name, defaultMp3Title, defaultMp3Artist } = req.body;
+    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist } = req.body;
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'Mappnamn krävs' });
     }
@@ -38,8 +38,10 @@ const createFolder = async (req, res) => {
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
     }
-    const normalizedTitle = typeof defaultMp3Title === 'string' ? defaultMp3Title.trim() : null;
-    const normalizedArtist = typeof defaultMp3Artist === 'string' ? defaultMp3Artist.trim() : null;
+    const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
+    const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
+    const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : null;
+    const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : null;
 
     // Create database entry (save both original and normalized names)
     const result = await pool.query(
@@ -61,7 +63,7 @@ const createFolder = async (req, res) => {
 const updateFolder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, defaultMp3Title, defaultMp3Artist } = req.body;
+    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist } = req.body;
 
     const folderResult = await pool.query('SELECT * FROM folders WHERE id = $1', [id]);
     if (folderResult.rows.length === 0) {
@@ -74,8 +76,10 @@ const updateFolder = async (req, res) => {
       return res.status(400).json({ error: 'Mappnamn krävs' });
     }
 
-    const normalizedTitle = typeof defaultMp3Title === 'string' ? defaultMp3Title.trim() : (current.default_mp3_title || null);
-    const normalizedArtist = typeof defaultMp3Artist === 'string' ? defaultMp3Artist.trim() : (current.default_mp3_artist || null);
+    const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
+    const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
+    const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : (current.default_mp3_title || null);
+    const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : (current.default_mp3_artist || null);
 
     const result = await pool.query(
       `UPDATE folders

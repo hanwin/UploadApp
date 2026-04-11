@@ -32,9 +32,9 @@ function FolderManagement({ user }) {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderDefaultTitle, setNewFolderDefaultTitle] = useState('');
-  const [newFolderDefaultArtist, setNewFolderDefaultArtist] = useState('');
-  const [editDialog, setEditDialog] = useState({ open: false, folder: null, name: '', defaultMp3Title: '', defaultMp3Artist: '' });
+  const [newFolderStandardTagTitle, setNewFolderStandardTagTitle] = useState('');
+  const [newFolderStandardTagArtist, setNewFolderStandardTagArtist] = useState('');
+  const [editDialog, setEditDialog] = useState({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [showFiles, setShowFiles] = useState(false);
@@ -68,13 +68,13 @@ function FolderManagement({ user }) {
     try {
       await folderAPI.create({
         name: newFolderName.trim(),
-        defaultMp3Title: newFolderDefaultTitle,
-        defaultMp3Artist: newFolderDefaultArtist
+        standardTagTitle: newFolderStandardTagTitle,
+        standardTagArtist: newFolderStandardTagArtist
       });
       success(`Mapp "${newFolderName}" skapad!`);
       setNewFolderName('');
-      setNewFolderDefaultTitle('');
-      setNewFolderDefaultArtist('');
+      setNewFolderStandardTagTitle('');
+      setNewFolderStandardTagArtist('');
       setOpenDialog(false);
       loadFolders();
     } catch (err) {
@@ -101,8 +101,8 @@ function FolderManagement({ user }) {
       open: true,
       folder,
       name: folder.original_name || folder.disk_name,
-      defaultMp3Title: folder.default_mp3_title || '',
-      defaultMp3Artist: folder.default_mp3_artist || ''
+      standardTagTitle: folder.default_mp3_title || '',
+      standardTagArtist: folder.default_mp3_artist || ''
     });
   };
 
@@ -116,11 +116,11 @@ function FolderManagement({ user }) {
     try {
       await folderAPI.update(editDialog.folder.id, {
         name: editDialog.name.trim(),
-        defaultMp3Title: editDialog.defaultMp3Title,
-        defaultMp3Artist: editDialog.defaultMp3Artist
+        standardTagTitle: editDialog.standardTagTitle,
+        standardTagArtist: editDialog.standardTagArtist
       });
       success('Mapp uppdaterad!');
-      setEditDialog({ open: false, folder: null, name: '', defaultMp3Title: '', defaultMp3Artist: '' });
+      setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' });
       loadFolders();
     } catch (err) {
       showError(err.response?.data?.error || 'Kunde inte uppdatera mapp');
@@ -227,11 +227,11 @@ function FolderManagement({ user }) {
                     primaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
                     secondary={
                       (folder.default_mp3_title || folder.default_mp3_artist)
-                        ? `Default MP3 - Title: ${folder.default_mp3_title || '-'} | Artist: ${folder.default_mp3_artist || '-'}`
+                        ? `Standardtag MP3 - Title: ${folder.default_mp3_title || '-'} | Artist: ${folder.default_mp3_artist || '-'}`
                         : null
                     }
                   />
-                  <Tooltip title="Redigera mapp och default MP3-taggar">
+                  <Tooltip title="Redigera mapp och standardtag MP3">
                     <IconButton
                       edge="end"
                       color="primary"
@@ -271,8 +271,8 @@ function FolderManagement({ user }) {
         open={openDialog}
         onClose={() => {
           setOpenDialog(false);
-          setNewFolderDefaultTitle('');
-          setNewFolderDefaultArtist('');
+          setNewFolderStandardTagTitle('');
+          setNewFolderStandardTagArtist('');
         }}
         maxWidth="sm"
         fullWidth
@@ -294,18 +294,18 @@ function FolderManagement({ user }) {
           />
           <TextField
             margin="dense"
-            label="Default MP3 title"
+            label="Standardtag MP3 title"
             fullWidth
-            value={newFolderDefaultTitle}
-            onChange={(e) => setNewFolderDefaultTitle(e.target.value)}
+            value={newFolderStandardTagTitle}
+            onChange={(e) => setNewFolderStandardTagTitle(e.target.value)}
             helperText="Använd {filename} för filnamn och {folder} för mappens fullständiga namn"
           />
           <TextField
             margin="dense"
-            label="Default MP3 artist"
+            label="Standardtag MP3 artist"
             fullWidth
-            value={newFolderDefaultArtist}
-            onChange={(e) => setNewFolderDefaultArtist(e.target.value)}
+            value={newFolderStandardTagArtist}
+            onChange={(e) => setNewFolderStandardTagArtist(e.target.value)}
             helperText="Lämna tomt för automatisk artist = mappnamn"
           />
         </DialogContent>
@@ -313,8 +313,8 @@ function FolderManagement({ user }) {
           <Button
             onClick={() => {
               setOpenDialog(false);
-              setNewFolderDefaultTitle('');
-              setNewFolderDefaultArtist('');
+              setNewFolderStandardTagTitle('');
+              setNewFolderStandardTagArtist('');
             }}
           >
             Avbryt
@@ -326,7 +326,7 @@ function FolderManagement({ user }) {
       </Dialog>
 
       {/* Edit Folder Dialog */}
-      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, name: '', defaultMp3Title: '', defaultMp3Artist: '' })} maxWidth="sm" fullWidth>
+      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' })} maxWidth="sm" fullWidth>
         <DialogTitle>Redigera mapp</DialogTitle>
         <DialogContent>
           <TextField
@@ -339,23 +339,23 @@ function FolderManagement({ user }) {
           />
           <TextField
             margin="dense"
-            label="Default MP3 title"
+            label="Standardtag MP3 title"
             fullWidth
-            value={editDialog.defaultMp3Title}
-            onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultMp3Title: e.target.value }))}
+            value={editDialog.standardTagTitle}
+            onChange={(e) => setEditDialog((prev) => ({ ...prev, standardTagTitle: e.target.value }))}
             helperText="Använd {filename} för filnamn och {folder} för mappens fullständiga namn"
           />
           <TextField
             margin="dense"
-            label="Default MP3 artist"
+            label="Standardtag MP3 artist"
             fullWidth
-            value={editDialog.defaultMp3Artist}
-            onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultMp3Artist: e.target.value }))}
+            value={editDialog.standardTagArtist}
+            onChange={(e) => setEditDialog((prev) => ({ ...prev, standardTagArtist: e.target.value }))}
             helperText="Lämna tomt för automatisk artist = mappnamn"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, folder: null, name: '', defaultMp3Title: '', defaultMp3Artist: '' })}>Avbryt</Button>
+          <Button onClick={() => setEditDialog({ open: false, folder: null, name: '', standardTagTitle: '', standardTagArtist: '' })}>Avbryt</Button>
           <Button onClick={handleUpdateFolder} variant="contained">
             Spara
           </Button>
