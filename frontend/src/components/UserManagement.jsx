@@ -390,7 +390,16 @@ function UserManagement({ user, onViewAsUser }) {
         </Collapse>
 
         <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
-          <Table size="small" sx={{ width: '100%' }}>
+          <Table
+            size="small"
+            sx={{
+              width: '100%',
+              '& .MuiTableCell-root': {
+                px: { xs: 0.75, sm: 1 },
+                py: 0.75
+              }
+            }}
+          >
             <TableHead>
               <TableRow>
                 <TableCell><strong>Användarnamn</strong></TableCell>
@@ -416,9 +425,11 @@ function UserManagement({ user, onViewAsUser }) {
             <TableBody>
               {users.map((u) => (
                 <TableRow key={u.id} hover>
-                  <TableCell sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{u.username}</TableCell>
+                  <TableCell sx={{ width: { xs: 110, md: 130 }, maxWidth: { xs: 110, md: 130 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {u.username}
+                  </TableCell>
                   <TableCell sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{u.name || ''}</TableCell>
-                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, whiteSpace: 'normal', overflowWrap: 'anywhere', maxWidth: 240 }}>
+                  <TableCell sx={{ display: { xs: 'none', md: 'table-cell' }, whiteSpace: 'normal', overflowWrap: 'anywhere', minWidth: 240, maxWidth: 360 }}>
                     {u.email}
                   </TableCell>
                   <TableCell>
@@ -455,7 +466,7 @@ function UserManagement({ user, onViewAsUser }) {
                           ))
                         }
                         renderInput={(params) => (
-                          <TextField {...params} variant="outlined" size="small" placeholder="Lägg till mapp" />
+                          <TextField {...params} variant="outlined" size="small" />
                         )}
                         sx={{
                           width: '100%',
