@@ -18,7 +18,7 @@ const getAllFolders = async (req, res) => {
 const { normalizeFolderName } = require('../utils/normalizeFolderName');
 const createFolder = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, defaultMp3Title, defaultMp3Artist } = req.body;
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'Mappnamn krävs' });
     }
@@ -38,10 +38,14 @@ const createFolder = async (req, res) => {
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
     }
+    const normalizedTitle = typeof defaultMp3Title === 'string' ? defaultMp3Title.trim() : null;
+    const normalizedArtist = typeof defaultMp3Artist === 'string' ? defaultMp3Artist.trim() : null;
+
     // Create database entry (save both original and normalized names)
     const result = await pool.query(
-      'INSERT INTO folders (original_name, disk_name) VALUES ($1, $2) RETURNING *',
-      [trimmedName, safeFolderName]
+      `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [trimmedName, safeFolderName, normalizedTitle || null, normalizedArtist || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {

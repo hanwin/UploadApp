@@ -32,6 +32,8 @@ function FolderManagement({ user }) {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderDefaultTitle, setNewFolderDefaultTitle] = useState('');
+  const [newFolderDefaultArtist, setNewFolderDefaultArtist] = useState('');
   const [editDialog, setEditDialog] = useState({ open: false, folder: null, name: '', defaultMp3Title: '', defaultMp3Artist: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
@@ -64,9 +66,15 @@ function FolderManagement({ user }) {
     }
 
     try {
-      await folderAPI.create({ name: newFolderName.trim() });
+      await folderAPI.create({
+        name: newFolderName.trim(),
+        defaultMp3Title: newFolderDefaultTitle,
+        defaultMp3Artist: newFolderDefaultArtist
+      });
       success(`Mapp "${newFolderName}" skapad!`);
       setNewFolderName('');
+      setNewFolderDefaultTitle('');
+      setNewFolderDefaultArtist('');
       setOpenDialog(false);
       loadFolders();
     } catch (err) {
@@ -259,7 +267,16 @@ function FolderManagement({ user }) {
       </Card>
 
       {/* Create Folder Dialog */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={openDialog}
+        onClose={() => {
+          setOpenDialog(false);
+          setNewFolderDefaultTitle('');
+          setNewFolderDefaultArtist('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Skapa ny mapp</DialogTitle>
         <DialogContent>
           <TextField
@@ -275,9 +292,33 @@ function FolderManagement({ user }) {
               }
             }}
           />
+          <TextField
+            margin="dense"
+            label="Default MP3 title"
+            fullWidth
+            value={newFolderDefaultTitle}
+            onChange={(e) => setNewFolderDefaultTitle(e.target.value)}
+            helperText="Använd {filename} för filnamn och {folder} för mappens fullständiga namn"
+          />
+          <TextField
+            margin="dense"
+            label="Default MP3 artist"
+            fullWidth
+            value={newFolderDefaultArtist}
+            onChange={(e) => setNewFolderDefaultArtist(e.target.value)}
+            helperText="Lämna tomt för automatisk artist = mappnamn"
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Avbryt</Button>
+          <Button
+            onClick={() => {
+              setOpenDialog(false);
+              setNewFolderDefaultTitle('');
+              setNewFolderDefaultArtist('');
+            }}
+          >
+            Avbryt
+          </Button>
           <Button onClick={handleCreateFolder} variant="contained">
             Skapa
           </Button>
