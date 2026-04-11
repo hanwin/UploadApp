@@ -402,7 +402,7 @@ function UserManagement({ user, onViewAsUser }) {
           >
             <TableHead>
               <TableRow>
-                <TableCell><strong>Användarnamn</strong></TableCell>
+                <TableCell><strong>Anvnamn</strong></TableCell>
                 <TableCell><strong>Namn</strong></TableCell>
                 <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>E-post</strong></TableCell>
                 <TableCell><strong>Roll</strong></TableCell>
@@ -415,7 +415,7 @@ function UserManagement({ user, onViewAsUser }) {
                     right: 0,
                     backgroundColor: 'background.paper',
                     zIndex: 2,
-                    width: 120
+                    width: 90
                   }}
                 >
                   <strong>Åtgärder</strong>
@@ -424,8 +424,18 @@ function UserManagement({ user, onViewAsUser }) {
             </TableHead>
             <TableBody>
               {users.map((u) => (
-                <TableRow key={u.id} hover>
-                  <TableCell sx={{ width: { xs: 110, md: 130 }, maxWidth: { xs: 110, md: 130 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <TableRow
+                  key={u.id}
+                  hover
+                  sx={{
+                    '&:hover .user-row-actions-extra, &:focus-within .user-row-actions-extra': {
+                      opacity: 1,
+                      width: 'auto',
+                      pointerEvents: 'auto'
+                    }
+                  }}
+                >
+                  <TableCell sx={{ width: { xs: 90, md: 110 }, maxWidth: { xs: 90, md: 110 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {u.username}
                   </TableCell>
                   <TableCell sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{u.name || ''}</TableCell>
@@ -471,7 +481,7 @@ function UserManagement({ user, onViewAsUser }) {
                         sx={{
                           width: '100%',
                           minWidth: { xs: 120, sm: 160 },
-                          maxWidth: { xs: 220, md: 320 },
+                          maxWidth: { xs: 190, md: 250 },
                           '& .MuiAutocomplete-tag': {
                             maxWidth: '100%'
                           },
@@ -491,22 +501,12 @@ function UserManagement({ user, onViewAsUser }) {
                       right: 0,
                       backgroundColor: 'background.paper',
                       zIndex: 1,
-                      width: 120
+                      width: 90
                     }}
                   >
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
                       {u.role !== 'superadmin' && (
                         <>
-                          {u.role !== 'admin' && (
-                            <IconButton
-                              color="primary"
-                              onClick={() => onViewAsUser(u)}
-                              size="small"
-                              title="Visa som denna användare"
-                            >
-                              <Visibility />
-                            </IconButton>
-                          )}
                           <IconButton
                             color="primary"
                             onClick={() => setEditUser(u)}
@@ -515,11 +515,37 @@ function UserManagement({ user, onViewAsUser }) {
                           >
                             <Edit />
                           </IconButton>
+                          {u.role !== 'admin' && (
+                            <IconButton
+                              className="user-row-actions-extra"
+                              color="primary"
+                              onClick={() => onViewAsUser(u)}
+                              size="small"
+                              title="Visa som denna användare"
+                              sx={{
+                                opacity: { xs: 1, md: 0 },
+                                width: { xs: 'auto', md: 0 },
+                                overflow: 'hidden',
+                                pointerEvents: { xs: 'auto', md: 'none' },
+                                transition: 'opacity 0.2s ease'
+                              }}
+                            >
+                              <Visibility />
+                            </IconButton>
+                          )}
                           <IconButton
+                            className="user-row-actions-extra"
                             color="error"
                             onClick={() => setConfirmDelete(u)}
                             size="small"
                             title="Ta bort användare"
+                            sx={{
+                              opacity: { xs: 1, md: 0 },
+                              width: { xs: 'auto', md: 0 },
+                              overflow: 'hidden',
+                              pointerEvents: { xs: 'auto', md: 'none' },
+                              transition: 'opacity 0.2s ease'
+                            }}
                           >
                             <Delete />
                           </IconButton>
