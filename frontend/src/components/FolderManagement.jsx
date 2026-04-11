@@ -270,7 +270,6 @@ function FolderManagement({ user }) {
             fullWidth
             value={newFolderStandardTagTitle}
             onChange={(e) => setNewFolderStandardTagTitle(e.target.value)}
-            helperText="Använd {filename} för filnamn och {folder} för mappens fullständiga namn"
           />
           <TextField
             margin="dense"
@@ -278,7 +277,6 @@ function FolderManagement({ user }) {
             fullWidth
             value={newFolderStandardTagArtist}
             onChange={(e) => setNewFolderStandardTagArtist(e.target.value)}
-            helperText="Lämna tomt för automatisk artist = mappnamn"
           />
         </DialogContent>
         <DialogActions>
@@ -308,7 +306,6 @@ function FolderManagement({ user }) {
             fullWidth
             value={editDialog.standardTagTitle}
             onChange={(e) => setEditDialog((prev) => ({ ...prev, standardTagTitle: e.target.value }))}
-            helperText="Använd {filename} för filnamn och {folder} för mappens fullständiga namn"
           />
           <TextField
             margin="dense"
@@ -316,7 +313,6 @@ function FolderManagement({ user }) {
             fullWidth
             value={editDialog.standardTagArtist}
             onChange={(e) => setEditDialog((prev) => ({ ...prev, standardTagArtist: e.target.value }))}
-            helperText="Lämna tomt för automatisk artist = mappnamn"
           />
         </DialogContent>
         <DialogActions>
