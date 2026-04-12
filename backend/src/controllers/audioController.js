@@ -461,6 +461,19 @@ const updateBroadcastTime = async (req, res) => {
       [broadcastTime || null, fileId]
     );
 
+    // Write current.seq when a broadcast time is set
+    if (broadcastTime) {
+      try {
+        const { normalizeFolderName } = require('../utils/normalizeFolderName');
+        const uploadsRoot = path.join(__dirname, '../../uploads');
+        const safeFolder = normalizeFolderName(file.folder);
+        const currentSeqPath = path.join(uploadsRoot, safeFolder, 'current.seq');
+        fs.writeFileSync(currentSeqPath, file.original_name + '\n', 'utf-8');
+      } catch (seqError) {
+        console.error('Failed to write current.seq on schedule:', seqError);
+      }
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Update broadcast time error:', error);
