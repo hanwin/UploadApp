@@ -33,6 +33,9 @@ function AudioPlayer({ src }) {
     audio.addEventListener('ended', handleEnded);
 
     return () => {
+      audio.pause();
+      audio.removeAttribute('src');
+      audio.load();
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
@@ -80,7 +83,7 @@ function AudioPlayer({ src }) {
 
   return (
     <Box sx={{ width: '100%' }}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="none" />
       
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         {/* Play/Pause Button */}

@@ -322,6 +322,35 @@ const streamAudio = async (req, res) => {
     const range = req.headers.range;
     const streamMimeType = getCanonicalAudioMimeType(file.original_name) || getCanonicalAudioMimeType(file.filename) || 'application/octet-stream';
 
+    const streamFile = (fileStream, statusCode, headers) => {
+      let cleanedUp = false;
+
+      const cleanup = () => {
+        if (cleanedUp) {
+          return;
+        }
+        cleanedUp = true;
+        fileStream.destroy();
+      };
+
+      fileStream.on('error', (streamError) => {
+        console.error('Audio stream error:', streamError);
+        cleanup();
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Det gick inte att strömma filen' });
+        } else {
+          res.destroy(streamError);
+        }
+      });
+
+      res.on('close', cleanup);
+      res.on('finish', cleanup);
+      req.on('aborted', cleanup);
+
+      res.writeHead(statusCode, headers);
+      fileStream.pipe(res);
+    };
+
     if (range) {
       // Parse Range header
       const parts = range.replace(/bytes=/, "").split("-");
@@ -334,7 +363,7 @@ const streamAudio = async (req, res) => {
 
       // Set headers for partial content
       const encodedFilename = encodeURIComponent(file.original_name);
-      res.writeHead(206, {
+      streamFile(fileStream, 206, {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
@@ -342,21 +371,17 @@ const streamAudio = async (req, res) => {
         'X-Content-Type-Options': 'nosniff',
         'Content-Disposition': `inline; filename*=UTF-8''${encodedFilename}`
       });
-
-      fileStream.pipe(res);
     } else {
       // No range request, send entire file
       const encodedFilename = encodeURIComponent(file.original_name);
-      res.writeHead(200, {
+      const fileStream = fs.createReadStream(file.file_path);
+      streamFile(fileStream, 200, {
         'Content-Length': fileSize,
         'Content-Type': streamMimeType,
         'Accept-Ranges': 'bytes',
         'X-Content-Type-Options': 'nosniff',
         'Content-Disposition': `inline; filename*=UTF-8''${encodedFilename}`
       });
-
-      const fileStream = fs.createReadStream(file.file_path);
-      fileStream.pipe(res);
     }
   } catch (error) {
     console.error('Stream error:', error);
