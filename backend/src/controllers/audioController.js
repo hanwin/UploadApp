@@ -5,6 +5,8 @@ const fs = require('fs');
 const { processAudioInBackground } = require('../services/audioProcessor');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const { writeTags } = require('../services/mp3Tags');
+const { writeCurrentSeq } = require('../utils/currentSeq');
+const { getAudioDurationSeconds } = require('../utils/audioDuration');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -192,12 +194,19 @@ const uploadAudio = async (req, res) => {
       }
     }
 
+    // Calculate length for current.seq template placeholders.
+    let audioLengthSeconds = null;
+    try {
+      audioLengthSeconds = await getAudioDurationSeconds(filePath);
+    } catch (durationError) {
+      console.error('Failed to detect audio duration for current.seq:', durationError.message);
+    }
+
     // Write current.seq with filename in folder
     try {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, dbFolder);
-      const currentSeqPath = path.join(folderPath, 'current.seq');
-      fs.writeFileSync(currentSeqPath, decodedOriginalName + '\n', 'utf-8');
+      writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds);
     } catch (error) {
       console.error('Failed to write current.seq:', error);
       // Don't fail the upload if current.seq writing fails
@@ -467,8 +476,21 @@ const updateBroadcastTime = async (req, res) => {
         const { normalizeFolderName } = require('../utils/normalizeFolderName');
         const uploadsRoot = path.join(__dirname, '../../uploads');
         const safeFolder = normalizeFolderName(file.folder);
-        const currentSeqPath = path.join(uploadsRoot, safeFolder, 'current.seq');
-        fs.writeFileSync(currentSeqPath, file.original_name + '\n', 'utf-8');
+        const folderPath = path.join(uploadsRoot, safeFolder);
+
+        let durationSeconds = Number.isFinite(file.duration) ? file.duration : null;
+        if (!Number.isFinite(durationSeconds) && file.file_path) {
+          const audioPath = file.file_path.startsWith('/app')
+            ? file.file_path
+            : path.join(uploadsRoot, file.file_path);
+          try {
+            durationSeconds = await getAudioDurationSeconds(audioPath);
+          } catch (durationError) {
+            console.error('Failed to detect scheduled file duration for current.seq:', durationError.message);
+          }
+        }
+
+        writeCurrentSeq(folderPath, file.original_name, durationSeconds);
       } catch (seqError) {
         console.error('Failed to write current.seq on schedule:', seqError);
       }

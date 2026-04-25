@@ -5,6 +5,7 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const pool = require('../models/db');
 const { writeTags } = require('./mp3Tags');
+const { writeCurrentSeq } = require('../utils/currentSeq');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -302,8 +303,7 @@ async function processAudioFile(fileId) {
     try {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, file.folder);
-      const currentSeqPath = path.join(folderPath, 'current.seq');
-      fs.writeFileSync(currentSeqPath, processedDisplayName + '\n', 'utf-8');
+      writeCurrentSeq(folderPath, processedDisplayName, duration);
       console.log(`[AudioProcessor] Updated current.seq with ${processedDisplayName}`);
     } catch (error) {
       console.error(`[AudioProcessor] Failed to write current.seq:`, error);
