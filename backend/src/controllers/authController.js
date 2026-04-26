@@ -13,6 +13,12 @@ const getAuthCookieOptions = () => ({
   path: '/'
 });
 
+const setNoStore = (res) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+};
+
 // Register new user
 const register = async (req, res) => {
   try {
@@ -91,6 +97,7 @@ const login = async (req, res) => {
     );
 
     res.cookie('auth_token', token, getAuthCookieOptions());
+    setNoStore(res);
 
     res.json({
       message: 'Inloggning lyckades',
@@ -113,12 +120,15 @@ const logout = async (req, res) => {
     ...getAuthCookieOptions(),
     maxAge: undefined
   });
+  setNoStore(res);
   res.json({ message: 'Logged out successfully' });
 };
 
 // Get current user profile
 const getProfile = async (req, res) => {
   try {
+    setNoStore(res);
+
     const result = await pool.query(
       'SELECT id, username, name, email, role, created_at FROM users WHERE id = $1',
       [req.user.id]

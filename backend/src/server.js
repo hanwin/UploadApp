@@ -23,6 +23,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:81')
   .map(s => s.trim());
 
 app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
 const io = new Server(httpServer, {
   cors: {
@@ -50,12 +51,6 @@ app.use(express.urlencoded({ extended: true, charset: 'utf-8', limit: '2gb' }));
 // Set default charset for responses
 app.use((req, res, next) => {
   res.charset = 'utf-8';
-
-  // API-focused CSP blocks active content while still allowing JSON clients.
-  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
-
   next();
 });
 
