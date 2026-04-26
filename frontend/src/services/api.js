@@ -11,6 +11,19 @@ const api = axios.create({
   }
 });
 
+let csrfToken = null;
+
+const isUnsafeMethod = (method = 'get') => {
+  const normalized = method.toLowerCase();
+  return normalized === 'post' || normalized === 'put' || normalized === 'patch' || normalized === 'delete';
+};
+
+const fetchCsrfToken = async () => {
+  const response = await api.get('/auth/csrf-token');
+  csrfToken = response.data?.csrfToken || null;
+  return csrfToken;
+};
+
 // Interceptor to handle FormData correctly
 api.interceptors.request.use((config) => {
   // Let browser set Content-Type for FormData (includes boundary)
@@ -20,8 +33,27 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+api.interceptors.request.use(async (config) => {
+  const requestMethod = config.method || 'get';
+  const requestUrl = config.url || '';
+  config.headers = config.headers || {};
+
+  if (isUnsafeMethod(requestMethod) && !requestUrl.includes('/auth/csrf-token')) {
+    if (!csrfToken) {
+      await fetchCsrfToken();
+    }
+
+    if (csrfToken) {
+      config.headers['X-CSRF-Token'] = csrfToken;
+    }
+  }
+
+  return config;
+});
+
 // Auth API
 export const authAPI = {
+  getCsrfToken: () => fetchCsrfToken(),
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
   logout: () => api.post('/auth/logout'),

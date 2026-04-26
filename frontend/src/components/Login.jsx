@@ -19,11 +19,14 @@ import { useToast } from '../contexts/ToastContext';
 function Login({ onLogin, onForgotPassword }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [csrfToken, setCsrfToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const { error: showError } = useToast();
 
   useEffect(() => {
+    let mounted = true;
+
     // Load saved username only
     const savedUsername = localStorage.getItem('savedUsername');
     
@@ -31,6 +34,20 @@ function Login({ onLogin, onForgotPassword }) {
       setUsername(savedUsername);
       setRememberMe(true);
     }
+
+    authAPI.getCsrfToken()
+      .then((token) => {
+        if (mounted && token) {
+          setCsrfToken(token);
+        }
+      })
+      .catch(() => {
+        // CSRF token will be retried by API interceptor on submit if needed.
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   const handleSubmit = async (e) => {
@@ -75,7 +92,8 @@ function Login({ onLogin, onForgotPassword }) {
               </Typography>
             </Box>
 
-            <Box component="form" onSubmit={handleSubmit} autoComplete="on">
+            <Box component="form" method="post" onSubmit={handleSubmit} autoComplete="on">
+              <input type="hidden" name="csrfToken" value={csrfToken} readOnly />
               <TextField
                 fullWidth
                 label="Användarnamn eller e-post"

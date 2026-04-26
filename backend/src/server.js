@@ -14,6 +14,7 @@ const mp3TagsRoutes = require('./routes/mp3tags');
 const { startScheduleChecker } = require('./services/scheduleService');
 const { startDbFileSyncCron } = require('./services/dbFileSyncCronService');
 const testUploadRoutes = require('./routes/testupload');
+const { csrfProtectionMiddleware } = require('./middleware/csrf');
 
 const app = express();
 const httpServer = createServer(app);
@@ -41,7 +42,7 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
 }));
 app.use(express.json({ charset: 'utf-8', limit: '2gb' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8', limit: '2gb' }));
@@ -49,8 +50,16 @@ app.use(express.urlencoded({ extended: true, charset: 'utf-8', limit: '2gb' }));
 // Set default charset for responses
 app.use((req, res, next) => {
   res.charset = 'utf-8';
+
+  // API-focused CSP blocks active content while still allowing JSON clients.
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+
   next();
 });
+
+app.use('/api', csrfProtectionMiddleware);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {

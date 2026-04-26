@@ -6,9 +6,11 @@ const {
 	forgotPasswordRateLimit,
 	resetPasswordRateLimit
 } = require('../middleware/rateLimit');
+const { issueCsrfToken } = require('../middleware/csrf');
 
 const router = express.Router();
 
+router.get('/csrf-token', issueCsrfToken);
 router.post('/register', register);
 router.post('/login', loginRateLimit, login);
 router.post('/logout', logout);
