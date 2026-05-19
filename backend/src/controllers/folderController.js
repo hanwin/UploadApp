@@ -2,6 +2,15 @@ const pool = require('../models/db');
 const fs = require('fs');
 const path = require('path');
 
+function normalizePathSeparators(value) {
+  const input = String(value || '').trim();
+  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
+  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
+  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
+
+  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
+}
+
 // Get all folders
 const getAllFolders = async (req, res) => {
   try {
@@ -40,7 +49,7 @@ const createFolder = async (req, res) => {
     }
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
     const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
-    const incomingSeqPath = typeof defaultSeqPath === 'string' ? defaultSeqPath.trim() : null;
+    const incomingSeqPath = typeof defaultSeqPath === 'string' ? normalizePathSeparators(defaultSeqPath) : null;
     const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : null;
     const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : null;
 
@@ -78,7 +87,7 @@ const updateFolder = async (req, res) => {
 
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
     const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
-    const incomingSeqPath = typeof defaultSeqPath === 'string' ? defaultSeqPath.trim() : null;
+    const incomingSeqPath = typeof defaultSeqPath === 'string' ? normalizePathSeparators(defaultSeqPath) : null;
     const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : (current.default_mp3_title || null);
     const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : (current.default_mp3_artist || null);
     const normalizedSeqPath = defaultSeqPath !== undefined ? (incomingSeqPath || null) : (current.default_seq_path || null);

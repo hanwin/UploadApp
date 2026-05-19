@@ -27,6 +27,17 @@ import { folderAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from '../contexts/ToastContext';
 
+const DEFAULT_SEQ_PATH_EXAMPLE = ['Y:', 'audio_upload', '{foldername}', '{filename}'].join('\\');
+
+function normalizePathSeparators(value) {
+  const input = String(value || '');
+  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
+  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
+  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
+
+  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
+}
+
 function FolderManagement({ user }) {
   const navigate = useNavigate();
   const [folders, setFolders] = useState([]);
@@ -70,7 +81,7 @@ function FolderManagement({ user }) {
         name: newFolderName.trim(),
         standardTagTitle: newFolderStandardTagTitle,
         standardTagArtist: newFolderStandardTagArtist,
-        defaultSeqPath: newFolderDefaultSeqPath
+        defaultSeqPath: normalizePathSeparators(newFolderDefaultSeqPath)
       });
       success(`Mapp "${newFolderName}" skapad!`);
       setNewFolderName('');
@@ -115,7 +126,7 @@ function FolderManagement({ user }) {
       await folderAPI.update(editDialog.folder.id, {
         standardTagTitle: editDialog.standardTagTitle,
         standardTagArtist: editDialog.standardTagArtist,
-        defaultSeqPath: editDialog.defaultSeqPath
+        defaultSeqPath: normalizePathSeparators(editDialog.defaultSeqPath)
       });
       success('Mapp uppdaterad!');
       setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '', defaultSeqPath: '' });
@@ -289,8 +300,8 @@ function FolderManagement({ user }) {
             label="Default file0-mall för seq"
             fullWidth
             value={newFolderDefaultSeqPath}
-            onChange={(e) => setNewFolderDefaultSeqPath(e.target.value)}
-            helperText="Exempel: Y:\\audio_upload\\{foldername}\\{filename}"
+            onChange={(e) => setNewFolderDefaultSeqPath(normalizePathSeparators(e.target.value))}
+            helperText={`Exempel: ${DEFAULT_SEQ_PATH_EXAMPLE}`}
           />
         </DialogContent>
         <DialogActions>
@@ -334,8 +345,8 @@ function FolderManagement({ user }) {
             label="Default file0-mall för seq"
             fullWidth
             value={editDialog.defaultSeqPath}
-            onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultSeqPath: e.target.value }))}
-            helperText="Exempel: Y:\\audio_upload\\{foldername}\\{filename}"
+            onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultSeqPath: normalizePathSeparators(e.target.value) }))}
+            helperText={`Exempel: ${DEFAULT_SEQ_PATH_EXAMPLE}`}
           />
         </DialogContent>
         <DialogActions>
