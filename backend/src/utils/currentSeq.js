@@ -20,13 +20,16 @@ function formatAudioLength(durationSeconds) {
 
 function getTemplatePath(folderPath) {
   const folderName = path.basename(folderPath);
-  const namedTemplatePath = path.join(folderPath, `${folderName}.tmpl`);
+  const namedTemplatePath = path.join(folderPath, `${folderName}-tmpl.tmpl`);
   const legacyTemplatePath = path.join(folderPath, 'current.tmpl');
+  const oldNamedTemplatePath = path.join(folderPath, `${folderName}.tmpl`);
 
   if (fs.existsSync(namedTemplatePath)) {
     return namedTemplatePath;
   }
-
+  if (fs.existsSync(oldNamedTemplatePath)) {
+    return oldNamedTemplatePath;
+  }
   if (fs.existsSync(legacyTemplatePath)) {
     return legacyTemplatePath;
   }
@@ -37,11 +40,19 @@ function getTemplatePath(folderPath) {
 
 function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const templatePath = getTemplatePath(folderPath);
-
   const template = fs.readFileSync(templatePath, 'utf-8');
   const formattedLength = formatAudioLength(durationSeconds);
+  const folderName = path.basename(folderPath);
+  // Replace placeholders in file0 line only
   return template
-    .replace(/\{filename\}/gi, filename)
+    .replace(/file0=([^
+\r]*)/gi, (match, val) => {
+      let resolved = val
+        .replace(/\{foldername\}/gi, folderName)
+        .replace(/\{folder\}/gi, folderName)
+        .replace(/\{filename\}/gi, filename);
+      return `file0=${resolved}`;
+    })
     .replace(/\{length\}/gi, formattedLength);
 }
 
