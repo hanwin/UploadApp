@@ -1,4 +1,3 @@
-
 const pool = require('../models/db');
 const path = require('path');
 const fs = require('fs');
@@ -438,6 +437,16 @@ const deleteAudio = async (req, res) => {
 
     // Delete from database
     await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+
+    // If deleted file is currently referenced in seq, remove that reference.
+    try {
+      const uploadsRoot = path.join(__dirname, '../../uploads');
+      const folderPath = path.join(uploadsRoot, file.folder || '');
+      const { removeSeqReferenceForFile } = require('../utils/currentSeq');
+      removeSeqReferenceForFile(folderPath, file.original_name || file.filename);
+    } catch (seqError) {
+      console.error('Failed to update seq after delete:', seqError);
+    }
 
     res.json({ message: 'File deleted successfully' });
   } catch (error) {

@@ -108,6 +108,54 @@ function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
   }
 }
 
+function removeSeqReferenceForFile(folderPath, filename) {
+  const folderName = path.basename(folderPath);
+  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
+
+  if (!fs.existsSync(currentSeqPath)) {
+    return;
+  }
+
+  const targetName = path.win32.basename(String(filename || '')).toLowerCase();
+  if (!targetName) {
+    return;
+  }
+
+  const content = fs.readFileSync(currentSeqPath, 'utf-8');
+  const lines = content.split(/\r?\n/);
+  let changed = false;
+
+  const nextLines = lines.map((line) => {
+    if (line.toLowerCase().startsWith('file0=')) {
+      const currentValue = line.slice(line.indexOf('=') + 1).trim();
+      const currentBasename = path.win32.basename(currentValue).toLowerCase();
+      if (currentBasename === targetName) {
+        changed = true;
+        return 'file0=';
+      }
+    }
+
+    if (line.toLowerCase().startsWith('length0=') && changed) {
+      return 'length0=';
+    }
+
+    if (line.toLowerCase().startsWith('numberofentries=') && changed) {
+      return 'numberofentries=0';
+    }
+
+    if (line.toLowerCase().startsWith('nextindex=') && changed) {
+      return 'nextindex=0';
+    }
+
+    return line;
+  });
+
+  if (changed) {
+    fs.writeFileSync(currentSeqPath, nextLines.join('\n'), 'utf-8');
+  }
+}
+
 module.exports = {
-  writeCurrentSeq
+  writeCurrentSeq,
+  removeSeqReferenceForFile
 };
