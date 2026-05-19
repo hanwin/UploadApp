@@ -43,18 +43,22 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const template = fs.readFileSync(templatePath, 'utf-8');
   const formattedLength = formatAudioLength(durationSeconds);
   const folderName = path.basename(folderPath);
-  // Replace placeholders in file0 line only
-\r]*)/gi, (match, val) => {
-]*)/gim, (match, val) => {
-  return template
-    .replace(/^file0=([^\n\r]*)/gim, (match, val) => {
-      let resolved = val
-        .replace(/\{foldername\}/gi, folderName)
-        .replace(/\{folder\}/gi, folderName)
-        .replace(/\{filename\}/gi, filename);
-      return `file0=${resolved}`;
-    })
-    .replace(/\{length\}/gi, formattedLength);
+  const lines = template.split(/\r?\n/);
+  const resolvedLines = lines.map((line) => {
+    if (!line.trim().toLowerCase().startsWith('file0=')) {
+      return line;
+    }
+
+    const value = line.slice(line.indexOf('=') + 1);
+    const resolvedValue = value
+      .replace(/\{foldername\}/gi, folderName)
+      .replace(/\{folder\}/gi, folderName)
+      .replace(/\{filename\}/gi, filename);
+
+    return `file0=${resolvedValue}`;
+  });
+
+  return resolvedLines.join('\n').replace(/\{length\}/gi, formattedLength);
 }
 
 function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
