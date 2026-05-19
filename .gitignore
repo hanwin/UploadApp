@@ -17,3 +17,4 @@ uploads/*
 .vscode/
 venv/
 ..bfg-report/
+reset-test-data.sh
