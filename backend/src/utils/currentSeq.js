@@ -43,6 +43,7 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const template = fs.readFileSync(templatePath, 'utf-8');
   const formattedLength = formatAudioLength(durationSeconds);
   const folderName = path.basename(folderPath);
+  const filenameAsString = String(filename || '');
   const lines = template.split(/\r?\n/);
   const resolvedLines = lines.map((line) => {
     if (!line.trim().toLowerCase().startsWith('file0=')) {
@@ -50,10 +51,17 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
     }
 
     const value = line.slice(line.indexOf('=') + 1);
+    const hasFolderPlaceholders = /\{foldername\}|\{folder\}/i.test(value);
+    const filenameHasPath = /[\\/]/.test(filenameAsString);
+    const normalizedFilename = filenameAsString.replace(/\\\\/g, '\\');
+    const filenameValue = (hasFolderPlaceholders && filenameHasPath)
+      ? path.win32.basename(normalizedFilename)
+      : normalizedFilename;
+
     const resolvedValue = value
       .replace(/\{foldername\}/gi, folderName)
       .replace(/\{folder\}/gi, folderName)
-      .replace(/\{filename\}/gi, filename);
+      .replace(/\{filename\}/gi, filenameValue);
 
     return `file0=${resolvedValue}`;
   });
