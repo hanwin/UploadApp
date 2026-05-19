@@ -3,7 +3,7 @@ const path = require('path');
 
 const DEFAULT_CURRENT_TEMPLATE = [
   '[playlist]',
-  'file0={filename}',
+  'file0=Y:\\audio_upload\\{foldername}\\{filename}',
   'length0={length}',
   'numberofentries=1',
   'nextindex=0',
@@ -68,15 +68,19 @@ function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
 function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
   const folderName = path.basename(folderPath);
   const legacyCurrentSeqPath = path.join(folderPath, 'current.seq');
-  const currentSeqPath = path.join(folderPath, `${folderName}.seq.seq`);
+  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
   const seqFilenameValue = resolveSeqFilenameValue(filename, folderName, options.defaultSeqPath);
   const content = buildCurrentSeqContent(folderPath, seqFilenameValue, durationSeconds);
 
   fs.writeFileSync(currentSeqPath, content, 'utf-8');
 
-  // Remove legacy current.seq so only the new file name is used.
+  // Remove legacy current.seq and .seq.seq so only the new file name is used.
   if (fs.existsSync(legacyCurrentSeqPath)) {
     fs.unlinkSync(legacyCurrentSeqPath);
+  }
+  const oldSeqSeq = path.join(folderPath, `${folderName}.seq.seq`);
+  if (fs.existsSync(oldSeqSeq)) {
+    fs.unlinkSync(oldSeqSeq);
   }
 }
 
