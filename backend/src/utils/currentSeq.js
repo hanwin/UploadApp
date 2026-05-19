@@ -27,6 +27,10 @@ function normalizePathSeparators(value) {
   return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
 }
 
+function stripTrailingFilenamePlaceholder(value) {
+  return String(value || '').replace(/[\\/]?\{filename\}\s*$/i, '');
+}
+
 function getTemplatePath(folderPath) {
   const folderName = path.basename(folderPath);
   const namedTemplatePath = path.join(folderPath, `${folderName}-tmpl.tmpl`);
@@ -84,13 +88,15 @@ function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
     return cleanFilename;
   }
 
-  const resolved = defaultSeqPath
+  const sanitizedDefaultSeqPath = stripTrailingFilenamePlaceholder(defaultSeqPath);
+
+  const resolved = sanitizedDefaultSeqPath
     .trim()
     .replace(/\{foldername\}/gi, folderName)
     .replace(/\{folder\}/gi, folderName)
     .replace(/\{filename\}/gi, cleanFilename);
 
-  if (/\{filename\}/i.test(defaultSeqPath)) {
+  if (/\{filename\}/i.test(sanitizedDefaultSeqPath)) {
     return normalizePathSeparators(resolved);
   }
 
