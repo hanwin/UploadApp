@@ -44,9 +44,10 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const formattedLength = formatAudioLength(durationSeconds);
   const folderName = path.basename(folderPath);
   // Replace placeholders in file0 line only
-  return template
-    .replace(/file0=([^
 \r]*)/gi, (match, val) => {
+]*)/gim, (match, val) => {
+  return template
+    .replace(/^file0=([^\n\r]*)/gim, (match, val) => {
       let resolved = val
         .replace(/\{foldername\}/gi, folderName)
         .replace(/\{folder\}/gi, folderName)
