@@ -286,10 +286,11 @@ function FolderManagement({ user }) {
           />
           <TextField
             margin="dense"
-            label="Default sökväg för seq-fil"
+            label="Default file0-mall för seq"
             fullWidth
             value={newFolderDefaultSeqPath}
             onChange={(e) => setNewFolderDefaultSeqPath(e.target.value)}
+            helperText="Exempel: Y:\\audio_upload\\{foldername}\\{filename}"
           />
         </DialogContent>
         <DialogActions>
@@ -330,10 +331,11 @@ function FolderManagement({ user }) {
           />
           <TextField
             margin="dense"
-            label="Default sökväg för seq-fil"
+            label="Default file0-mall för seq"
             fullWidth
             value={editDialog.defaultSeqPath}
             onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultSeqPath: e.target.value }))}
+            helperText="Exempel: Y:\\audio_upload\\{foldername}\\{filename}"
           />
         </DialogContent>
         <DialogActions>
