@@ -18,6 +18,15 @@ function formatAudioLength(durationSeconds) {
   return String(Math.max(0, Math.round(durationSeconds * 1000)));
 }
 
+function normalizePathSeparators(value) {
+  const input = String(value || '');
+  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
+  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
+  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
+
+  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
+}
+
 function getTemplatePath(folderPath) {
   const folderName = path.basename(folderPath);
   const namedTemplatePath = path.join(folderPath, `${folderName}-tmpl.tmpl`);
@@ -63,7 +72,7 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
       .replace(/\{folder\}/gi, folderName)
       .replace(/\{filename\}/gi, filenameValue);
 
-    return `file0=${resolvedValue}`;
+    return `file0=${normalizePathSeparators(resolvedValue)}`;
   });
 
   return resolvedLines.join('\n').replace(/\{length\}/gi, formattedLength);
@@ -82,11 +91,11 @@ function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
     .replace(/\{filename\}/gi, cleanFilename);
 
   if (/\{filename\}/i.test(defaultSeqPath)) {
-    return resolved;
+    return normalizePathSeparators(resolved);
   }
 
   const separator = resolved.includes('\\') ? '\\' : '/';
-  return `${resolved.replace(/[\\/]+$/, '')}${separator}${cleanFilename}`;
+  return normalizePathSeparators(`${resolved.replace(/[\\/]+$/, '')}${separator}${cleanFilename}`);
 }
 
 function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
