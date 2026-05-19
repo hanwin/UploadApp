@@ -32,10 +32,29 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
     .replace(/\{length\}/gi, formattedLength);
 }
 
-function writeCurrentSeq(folderPath, filename, durationSeconds) {
-  const currentSeqPath = path.join(folderPath, 'current.seq');
-  const content = buildCurrentSeqContent(folderPath, filename, durationSeconds);
+function resolveSeqFilenameValue(filename, defaultSeqPath) {
+  const cleanFilename = String(filename || '').trim();
+  if (!defaultSeqPath || typeof defaultSeqPath !== 'string' || !defaultSeqPath.trim()) {
+    return cleanFilename;
+  }
+
+  const cleanBasePath = defaultSeqPath.trim().replace(/[\\/]+$/, '');
+  return `${cleanBasePath}/${cleanFilename}`;
+}
+
+function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
+  const folderName = path.basename(folderPath);
+  const legacyCurrentSeqPath = path.join(folderPath, 'current.seq');
+  const currentSeqPath = path.join(folderPath, `${folderName}.seq.seq`);
+  const seqFilenameValue = resolveSeqFilenameValue(filename, options.defaultSeqPath);
+  const content = buildCurrentSeqContent(folderPath, seqFilenameValue, durationSeconds);
+
   fs.writeFileSync(currentSeqPath, content, 'utf-8');
+
+  // Remove legacy current.seq so only the new file name is used.
+  if (fs.existsSync(legacyCurrentSeqPath)) {
+    fs.unlinkSync(legacyCurrentSeqPath);
+  }
 }
 
 module.exports = {

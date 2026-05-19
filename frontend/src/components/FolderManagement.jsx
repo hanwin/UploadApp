@@ -35,7 +35,8 @@ function FolderManagement({ user }) {
   const [newFolderName, setNewFolderName] = useState('');
   const [newFolderStandardTagTitle, setNewFolderStandardTagTitle] = useState('');
   const [newFolderStandardTagArtist, setNewFolderStandardTagArtist] = useState('');
-  const [editDialog, setEditDialog] = useState({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
+  const [newFolderDefaultSeqPath, setNewFolderDefaultSeqPath] = useState('');
+  const [editDialog, setEditDialog] = useState({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '', defaultSeqPath: '' });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const { success, error: showError } = useToast();
 
@@ -68,12 +69,14 @@ function FolderManagement({ user }) {
       await folderAPI.create({
         name: newFolderName.trim(),
         standardTagTitle: newFolderStandardTagTitle,
-        standardTagArtist: newFolderStandardTagArtist
+        standardTagArtist: newFolderStandardTagArtist,
+        defaultSeqPath: newFolderDefaultSeqPath
       });
       success(`Mapp "${newFolderName}" skapad!`);
       setNewFolderName('');
       setNewFolderStandardTagTitle('');
       setNewFolderStandardTagArtist('');
+      setNewFolderDefaultSeqPath('');
       setOpenDialog(false);
       loadFolders();
     } catch (err) {
@@ -100,7 +103,8 @@ function FolderManagement({ user }) {
       open: true,
       folder,
       standardTagTitle: folder.default_mp3_title || '',
-      standardTagArtist: folder.default_mp3_artist || ''
+      standardTagArtist: folder.default_mp3_artist || '',
+      defaultSeqPath: folder.default_seq_path || ''
     });
   };
 
@@ -110,10 +114,11 @@ function FolderManagement({ user }) {
     try {
       await folderAPI.update(editDialog.folder.id, {
         standardTagTitle: editDialog.standardTagTitle,
-        standardTagArtist: editDialog.standardTagArtist
+        standardTagArtist: editDialog.standardTagArtist,
+        defaultSeqPath: editDialog.defaultSeqPath
       });
       success('Mapp uppdaterad!');
-      setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
+      setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '', defaultSeqPath: '' });
       loadFolders();
     } catch (err) {
       showError(err.response?.data?.error || 'Kunde inte uppdatera mapp');
@@ -199,8 +204,8 @@ function FolderManagement({ user }) {
                     primaryTypographyProps={{ variant: 'body1', fontWeight: 'medium' }}
                     secondary={
                       (folder.default_mp3_title || folder.default_mp3_artist)
-                        ? `Standardtag MP3 - Title: ${folder.default_mp3_title || '-'} | Artist: ${folder.default_mp3_artist || '-'}`
-                        : null
+                        ? `Standardtag MP3 - Title: ${folder.default_mp3_title || '-'} | Artist: ${folder.default_mp3_artist || '-'}${folder.default_seq_path ? ` | Seq-sökväg: ${folder.default_seq_path}` : ''}`
+                        : (folder.default_seq_path ? `Seq-sökväg: ${folder.default_seq_path}` : null)
                     }
                   />
                   <Tooltip title="Redigera standardtag MP3">
@@ -245,6 +250,7 @@ function FolderManagement({ user }) {
           setOpenDialog(false);
           setNewFolderStandardTagTitle('');
           setNewFolderStandardTagArtist('');
+          setNewFolderDefaultSeqPath('');
         }}
         maxWidth="sm"
         fullWidth
@@ -278,6 +284,13 @@ function FolderManagement({ user }) {
             value={newFolderStandardTagArtist}
             onChange={(e) => setNewFolderStandardTagArtist(e.target.value)}
           />
+          <TextField
+            margin="dense"
+            label="Default sökväg för seq-fil"
+            fullWidth
+            value={newFolderDefaultSeqPath}
+            onChange={(e) => setNewFolderDefaultSeqPath(e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
           <Button
@@ -285,6 +298,7 @@ function FolderManagement({ user }) {
               setOpenDialog(false);
               setNewFolderStandardTagTitle('');
               setNewFolderStandardTagArtist('');
+              setNewFolderDefaultSeqPath('');
             }}
           >
             Avbryt
@@ -296,7 +310,7 @@ function FolderManagement({ user }) {
       </Dialog>
 
       {/* Edit Folder Dialog */}
-      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' })} maxWidth="sm" fullWidth>
+      <Dialog open={editDialog.open} onClose={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '', defaultSeqPath: '' })} maxWidth="sm" fullWidth>
         <DialogTitle>Redigera mapp</DialogTitle>
         <DialogContent>
           <TextField
@@ -314,9 +328,16 @@ function FolderManagement({ user }) {
             value={editDialog.standardTagArtist}
             onChange={(e) => setEditDialog((prev) => ({ ...prev, standardTagArtist: e.target.value }))}
           />
+          <TextField
+            margin="dense"
+            label="Default sökväg för seq-fil"
+            fullWidth
+            value={editDialog.defaultSeqPath}
+            onChange={(e) => setEditDialog((prev) => ({ ...prev, defaultSeqPath: e.target.value }))}
+          />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' })}>Avbryt</Button>
+          <Button onClick={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '', defaultSeqPath: '' })}>Avbryt</Button>
           <Button onClick={handleUpdateFolder} variant="contained">
             Spara
           </Button>

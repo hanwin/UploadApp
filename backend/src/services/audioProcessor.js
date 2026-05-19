@@ -299,14 +299,22 @@ async function processAudioFile(fileId) {
       console.log(`[AudioProcessor] Created new processed DB row ${processedFileId}`);
     }
     
-    // Write current.seq with processed filename in folder
+    const folderDefaultsResult = await client.query(
+      'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
+      [file.folder]
+    );
+    const defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || null;
+
+    // Write folder-name.seq.seq with processed filename in folder
     try {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, file.folder);
-      writeCurrentSeq(folderPath, processedDisplayName, duration);
-      console.log(`[AudioProcessor] Updated current.seq with ${processedDisplayName}`);
+      writeCurrentSeq(folderPath, processedDisplayName, duration, {
+        defaultSeqPath
+      });
+      console.log(`[AudioProcessor] Updated seq file with ${processedDisplayName}`);
     } catch (error) {
-      console.error(`[AudioProcessor] Failed to write current.seq:`, error);
+      console.error(`[AudioProcessor] Failed to write seq file:`, error);
       // Don't fail processing if current.seq writing fails
     }
     

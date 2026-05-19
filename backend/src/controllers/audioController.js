@@ -87,7 +87,7 @@ const uploadAudio = async (req, res) => {
     }
 
     const folderCheck = await pool.query(
-      'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist FROM folders WHERE disk_name = $1 LIMIT 1',
+      'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
       [folder]
     );
     if (folderCheck.rows.length === 0) {
@@ -206,7 +206,9 @@ const uploadAudio = async (req, res) => {
     try {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, dbFolder);
-      writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds);
+      writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds, {
+        defaultSeqPath: folderMeta.default_seq_path
+      });
     } catch (error) {
       console.error('Failed to write current.seq:', error);
       // Don't fail the upload if current.seq writing fails
@@ -490,7 +492,15 @@ const updateBroadcastTime = async (req, res) => {
           }
         }
 
-        writeCurrentSeq(folderPath, file.original_name, durationSeconds);
+        const folderDefaultsResult = await pool.query(
+          'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
+          [safeFolder]
+        );
+        const defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || null;
+
+        writeCurrentSeq(folderPath, file.original_name, durationSeconds, {
+          defaultSeqPath
+        });
       } catch (seqError) {
         console.error('Failed to write current.seq on schedule:', seqError);
       }
