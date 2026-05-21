@@ -6,6 +6,7 @@ const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const { writeTags } = require('../services/mp3Tags');
 const { writeCurrentSeq } = require('../utils/currentSeq');
 const { getAudioDurationSeconds } = require('../utils/audioDuration');
+const { getDefaultSeqPathTemplate } = require('./settingsController');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -203,10 +204,11 @@ const uploadAudio = async (req, res) => {
 
     // Write current.seq with filename in folder
     try {
+      const defaultSeqPathTemplate = await getDefaultSeqPathTemplate();
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, dbFolder);
       writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds, {
-        defaultSeqPath: folderMeta.default_seq_path
+        defaultSeqPath: defaultSeqPathTemplate
       });
     } catch (error) {
       console.error('Failed to write current.seq:', error);

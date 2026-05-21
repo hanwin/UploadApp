@@ -2,19 +2,6 @@ const pool = require('../models/db');
 const fs = require('fs');
 const path = require('path');
 
-function normalizePathSeparators(value) {
-  const input = String(value || '').trim();
-  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
-  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
-  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
-
-  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
-}
-
-function sanitizeDefaultSeqPath(value) {
-  return normalizePathSeparators(String(value || '').replace(/[\\/]?\{filename\}\s*$/i, ''));
-}
-
 // Get all folders
 const getAllFolders = async (req, res) => {
   try {
@@ -31,7 +18,7 @@ const getAllFolders = async (req, res) => {
 const { normalizeFolderName } = require('../utils/normalizeFolderName');
 const createFolder = async (req, res) => {
   try {
-    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist, defaultSeqPath } = req.body;
+    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist } = req.body;
     if (!name || name.trim() === '') {
       return res.status(400).json({ error: 'Mappnamn krävs' });
     }
@@ -53,7 +40,6 @@ const createFolder = async (req, res) => {
     }
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
     const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
-    const incomingSeqPath = typeof defaultSeqPath === 'string' ? sanitizeDefaultSeqPath(defaultSeqPath) : null;
     const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : null;
     const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : null;
 
@@ -61,7 +47,7 @@ const createFolder = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path)
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [trimmedName, safeFolderName, normalizedTitle || null, normalizedArtist || null, incomingSeqPath || null]
+      [trimmedName, safeFolderName, normalizedTitle || null, normalizedArtist || null, null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -77,7 +63,7 @@ const createFolder = async (req, res) => {
 const updateFolder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist, defaultSeqPath } = req.body;
+    const { name, defaultMp3Title, defaultMp3Artist, standardTagTitle, standardTagArtist } = req.body;
 
     const folderResult = await pool.query('SELECT * FROM folders WHERE id = $1', [id]);
     if (folderResult.rows.length === 0) {
@@ -91,19 +77,16 @@ const updateFolder = async (req, res) => {
 
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
     const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
-    const incomingSeqPath = typeof defaultSeqPath === 'string' ? sanitizeDefaultSeqPath(defaultSeqPath) : null;
     const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : (current.default_mp3_title || null);
     const normalizedArtist = typeof incomingArtist === 'string' ? incomingArtist.trim() : (current.default_mp3_artist || null);
-    const normalizedSeqPath = defaultSeqPath !== undefined ? (incomingSeqPath || null) : (current.default_seq_path || null);
 
     const result = await pool.query(
       `UPDATE folders
           SET default_mp3_title = $1,
-              default_mp3_artist = $2,
-              default_seq_path = $3
-        WHERE id = $4
+              default_mp3_artist = $2
+        WHERE id = $3
       RETURNING *`,
-      [normalizedTitle || null, normalizedArtist || null, normalizedSeqPath, id]
+      [normalizedTitle || null, normalizedArtist || null, id]
     );
 
     res.json(result.rows[0]);

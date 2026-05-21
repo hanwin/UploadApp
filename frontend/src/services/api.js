@@ -117,4 +117,10 @@ export const userAPI = {
   updateUserProfile: (userId, data) => api.patch(`/users/${userId}/profile`, data),
 };
 
+// Settings API (superadmin only)
+export const settingsAPI = {
+  get: () => api.get('/settings'),
+  update: (data) => api.put('/settings', data),
+};
+
 export default api;

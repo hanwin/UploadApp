@@ -33,6 +33,23 @@ const ensureTables = async () => {
     ADD COLUMN IF NOT EXISTS default_seq_path VARCHAR(500)
   `);
 
+  // Create app settings table for central configuration
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key VARCHAR(100) PRIMARY KEY,
+      value TEXT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Ensure central default seq path setting exists
+  await pool.query(
+    `INSERT INTO app_settings (key, value)
+     VALUES ($1, $2)
+     ON CONFLICT (key) DO NOTHING`,
+    ['default_seq_path_template', '']
+  );
+
   // Create password_reset_tokens table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

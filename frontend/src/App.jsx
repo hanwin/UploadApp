@@ -11,13 +11,14 @@ import {
   Tab,
   IconButton
 } from '@mui/material';
-import { Logout as LogoutIcon, AudioFile, People, Folder, AccountCircle } from '@mui/icons-material';
+import { Logout as LogoutIcon, AudioFile, People, Folder, AccountCircle, Settings } from '@mui/icons-material';
 import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import AudioList from './components/AudioList';
 import UserManagement from './components/UserManagement';
 import FolderManagement from './components/FolderManagement';
+import SystemSettings from './components/SystemSettings';
 import ProfileDialog from './components/ProfileDialog';
 import Toast from './components/Toast';
 import { ToastProvider } from './contexts/ToastContext';
@@ -34,8 +35,9 @@ function AppContent() {
   const location = useLocation();
 
   // Map URL paths to tab indices for admin
-  const tabPaths = ['/files', '/folders', '/users'];
+  const tabPaths = ['/files', '/folders', '/users', '/settings'];
   const getTabFromPath = () => {
+    if (location.pathname.startsWith('/settings')) return 3;
     if (location.pathname.startsWith('/folders')) return 1;
     if (location.pathname.startsWith('/users')) return 2;
     return 0;
@@ -326,6 +328,12 @@ function AppContent() {
                 iconPosition="start"
                 sx={{ minHeight: { xs: 48, sm: 64 } }}
               />
+              <Tab
+                icon={<Settings />}
+                label="Inställningar"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
             </Tabs>
           </Box>
         )}
@@ -336,6 +344,9 @@ function AppContent() {
           } />
           <Route path="/users" element={
             showAdminTabs ? <UserManagement user={user} onViewAsUser={handleViewAsUser} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
+          } />
+          <Route path="/settings" element={
+            showAdminTabs ? <SystemSettings /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
           } />
           <Route path="*" element={
             <Box>
