@@ -11,7 +11,7 @@ import {
   Tab,
   IconButton
 } from '@mui/material';
-import { Logout as LogoutIcon, AudioFile, People, Folder, AccountCircle, Settings } from '@mui/icons-material';
+import { Logout as LogoutIcon, AudioFile, People, Folder, AccountCircle, Settings, Link as LinkIcon } from '@mui/icons-material';
 import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
@@ -20,6 +20,7 @@ import AudioList from './components/AudioList';
 import UserManagement from './components/UserManagement';
 import FolderManagement from './components/FolderManagement';
 import SystemSettings from './components/SystemSettings';
+import ExternalUploadLinksPage from './components/ExternalUploadLinksPage';
 import ProfileDialog from './components/ProfileDialog';
 import Toast from './components/Toast';
 import { ToastProvider } from './contexts/ToastContext';
@@ -36,14 +37,22 @@ function AppContent() {
   const location = useLocation();
 
   // Map URL paths to tab indices for admin
-  const tabPaths = ['/files', '/folders', '/users', '/settings'];
+  const superadminTabPaths = ['/files', '/folders', '/users', '/settings', '/upload-links'];
+  const adminTabPaths = ['/files', '/upload-links'];
+
   const getTabFromPath = () => {
+    if (location.pathname.startsWith('/upload-links')) return 4;
     if (location.pathname.startsWith('/settings')) return 3;
     if (location.pathname.startsWith('/folders')) return 1;
     if (location.pathname.startsWith('/users')) return 2;
     return 0;
   };
-  const activeTab = getTabFromPath();
+  const getAdminTabFromPath = () => {
+    if (location.pathname.startsWith('/upload-links')) return 1;
+    return 0;
+  };
+  const activeSuperadminTab = getTabFromPath();
+  const activeAdminTab = getAdminTabFromPath();
 
   useEffect(() => {
     const savedImpersonation = localStorage.getItem('impersonatedUser');
@@ -206,7 +215,8 @@ function AppContent() {
   const isSuperadmin = user.role === 'superadmin';
   const isAdmin = user.role === 'admin' || user.role === 'superadmin';
   const displayUser = impersonatedUser || user;
-  const showAdminTabs = isSuperadmin && !impersonatedUser;
+  const showSuperadminTabs = isSuperadmin && !impersonatedUser;
+  const showAdminTabs = user.role === 'admin' && !impersonatedUser;
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -301,11 +311,11 @@ function AppContent() {
       )}
 
       <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 }, px: { xs: 1, sm: 2 } }}>
-        {showAdminTabs && (
+        {showSuperadminTabs && (
           <Box sx={{ mb: { xs: 2, sm: 3 } }}>
             <Tabs 
-              value={activeTab} 
-              onChange={(e, newValue) => navigate(tabPaths[newValue])}
+              value={activeSuperadminTab} 
+              onChange={(e, newValue) => navigate(superadminTabPaths[newValue])}
               variant="scrollable"
               scrollButtons="auto"
               sx={{
@@ -341,20 +351,63 @@ function AppContent() {
                 iconPosition="start"
                 sx={{ minHeight: { xs: 48, sm: 64 } }}
               />
+              <Tab
+                icon={<LinkIcon />}
+                label="Uppladdningslänkar"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+            </Tabs>
+          </Box>
+        )}
+
+        {showAdminTabs && (
+          <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+            <Tabs
+              value={activeAdminTab}
+              onChange={(e, newValue) => navigate(adminTabPaths[newValue])}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTabs-indicator': {
+                  left: 0,
+                },
+                '& .MuiTabs-flexContainer': {
+                  justifyContent: 'flex-start',
+                }
+              }}
+            >
+              <Tab
+                icon={<AudioFile />}
+                label="Ljudfiler"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+              <Tab
+                icon={<LinkIcon />}
+                label="Uppladdningslänkar"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
             </Tabs>
           </Box>
         )}
 
         <Routes>
+          <Route path="/upload-links" element={
+            isAdmin && !impersonatedUser
+              ? <ExternalUploadLinksPage />
+              : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
+          } />
           <Route path="/public-upload" element={<PublicUploadPage />} />
           <Route path="/folders" element={
-            showAdminTabs ? <FolderManagement user={user} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
+            showSuperadminTabs ? <FolderManagement user={user} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
           } />
           <Route path="/users" element={
-            showAdminTabs ? <UserManagement user={user} onViewAsUser={handleViewAsUser} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
+            showSuperadminTabs ? <UserManagement user={user} onViewAsUser={handleViewAsUser} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
           } />
           <Route path="/settings" element={
-            showAdminTabs ? <SystemSettings /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
+            showSuperadminTabs ? <SystemSettings /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
           } />
           <Route path="*" element={
             <Box>

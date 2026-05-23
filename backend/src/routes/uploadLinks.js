@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 const { MAX_UPLOAD_BYTES } = require('../utils/uploadLimits');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const {
@@ -71,7 +71,7 @@ const publicUpload = multer({
 router.get('/public-info', getPublicUploadLinkInfo);
 router.post('/public-upload', validatePublicUploadToken, publicUpload.single('audio'), handlePublicUpload);
 
-router.use(authMiddleware);
+router.use(authMiddleware, adminMiddleware);
 router.get('/', getMyUploadLinks);
 router.post('/', createUploadLink);
 

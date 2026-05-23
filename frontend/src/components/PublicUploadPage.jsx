@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import {
   Alert,
   Box,
@@ -24,6 +24,8 @@ function PublicUploadPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const validate = async () => {
@@ -46,8 +48,7 @@ function PublicUploadPage() {
     validate();
   }, [token]);
 
-  const onFileSelected = async (event) => {
-    const selectedFile = event.target.files?.[0];
+  const uploadSelectedFile = async (selectedFile) => {
     if (!selectedFile) return;
 
     const ext = `.${selectedFile.name.split('.').pop().toLowerCase()}`;
@@ -82,8 +83,40 @@ function PublicUploadPage() {
     } finally {
       setUploading(false);
       setUploadProgress(0);
-      event.target.value = '';
     }
+  };
+
+  const onFileSelected = async (event) => {
+    const selectedFile = event.target.files?.[0];
+    await uploadSelectedFile(selectedFile);
+    event.target.value = '';
+  };
+
+  const onDragOver = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!uploading) {
+      setDragActive(true);
+    }
+  };
+
+  const onDragLeave = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+  };
+
+  const onDrop = async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+
+    if (uploading) {
+      return;
+    }
+
+    const droppedFile = event.dataTransfer?.files?.[0];
+    await uploadSelectedFile(droppedFile);
   };
 
   return (
@@ -111,15 +144,41 @@ function PublicUploadPage() {
                 Länken gäller till: {new Date(linkInfo?.expiresAt).toLocaleString('sv-SE')}
               </Alert>
 
-              <Button
-                variant="contained"
-                component="label"
-                startIcon={<CloudUploadIcon />}
-                disabled={uploading}
+              <Box
+                onDragOver={onDragOver}
+                onDragEnter={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                sx={{
+                  mt: 1,
+                  p: 4,
+                  border: '2px dashed',
+                  borderColor: dragActive ? 'primary.main' : 'divider',
+                  borderRadius: 2,
+                  cursor: uploading ? 'not-allowed' : 'pointer',
+                  bgcolor: dragActive ? 'action.hover' : 'background.paper',
+                  textAlign: 'center'
+                }}
               >
-                Välj fil (MP3 eller WAV)
-                <input hidden type="file" accept=".mp3,.wav,audio/mpeg,audio/wav" onChange={onFileSelected} />
-              </Button>
+                <CloudUploadIcon color={dragActive ? 'primary' : 'action'} sx={{ fontSize: 36, mb: 1 }} />
+                <Typography variant="body1" sx={{ mb: 0.5 }}>
+                  Dra och släpp fil här
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  eller klicka för att välja fil
+                </Typography>
+                <Button variant="contained" disabled={uploading}>
+                  Välj fil (MP3 eller WAV)
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  hidden
+                  type="file"
+                  accept=".mp3,.wav,audio/mpeg,audio/wav"
+                  onChange={onFileSelected}
+                />
+              </Box>
 
               {uploading && (
                 <Box sx={{ mt: 2 }}>
