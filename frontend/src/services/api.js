@@ -121,6 +121,7 @@ export const userAPI = {
 export const settingsAPI = {
   get: () => api.get('/settings'),
   update: (data) => api.put('/settings', data),
+  syncStorage: (dryRun = false) => api.post('/settings/sync-storage', { dryRun }),
 };
 
 // Upload links API

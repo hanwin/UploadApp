@@ -1,4 +1,5 @@
 const pool = require('../models/db');
+const { syncDbWithFilesystem } = require('../../scripts/sync-db-with-filesystem');
 
 function normalizePathSeparators(value) {
   const input = String(value || '').trim();
@@ -82,10 +83,30 @@ const getPublicUploadFolderDisplayName = async () => {
   return (result.rows[0]?.value || 'Lankuppladdningar').trim() || 'Lankuppladdningar';
 };
 
+const syncStorage = async (req, res) => {
+  try {
+    const dryRun = req.body?.dryRun === true;
+    const summary = await syncDbWithFilesystem({
+      dryRun,
+      logPrefix: '[manual-sync]'
+    });
+
+    res.json({
+      message: dryRun ? 'Torrkörning klar' : 'Synk slutförd',
+      dryRun,
+      summary
+    });
+  } catch (error) {
+    console.error('Sync storage error:', error);
+    res.status(500).json({ error: 'Det gick inte att synka lagring mot databas' });
+  }
+};
+
 module.exports = {
   getSettings,
   updateSettings,
   getDefaultSeqPathTemplate,
   getPublicUploadFolderName,
-  getPublicUploadFolderDisplayName
+  getPublicUploadFolderDisplayName,
+  syncStorage
 };
