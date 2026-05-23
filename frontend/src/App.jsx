@@ -17,7 +17,6 @@ import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import PublicUploadPage from './components/PublicUploadPage';
 import AudioList from './components/AudioList';
-import AdminOverviewPage from './components/AdminOverviewPage';
 import UserManagement from './components/UserManagement';
 import FolderManagement from './components/FolderManagement';
 import AdminSyncPage from './components/AdminSyncPage';
@@ -40,6 +39,7 @@ function AppContent() {
 
   // Map URL paths to tab indices for admin
   const superadminTabPaths = ['/files', '/folders', '/users', '/settings', '/upload-links'];
+  const adminTabPaths = ['/files', '/users', '/folders', '/sync', '/upload-links'];
 
   const getTabFromPath = () => {
     if (location.pathname.startsWith('/upload-links')) return 4;
@@ -49,7 +49,15 @@ function AppContent() {
     if (location.pathname.startsWith('/users')) return 2;
     return 0;
   };
+  const getAdminTabFromPath = () => {
+    if (location.pathname.startsWith('/users')) return 1;
+    if (location.pathname.startsWith('/folders')) return 2;
+    if (location.pathname.startsWith('/sync')) return 3;
+    if (location.pathname.startsWith('/upload-links')) return 4;
+    return 0;
+  };
   const activeSuperadminTab = getTabFromPath();
+  const activeAdminTab = getAdminTabFromPath();
 
   useEffect(() => {
     const savedImpersonation = localStorage.getItem('impersonatedUser');
@@ -121,10 +129,6 @@ function AppContent() {
 
   const handleLogin = (userData) => {
     setUser(userData);
-    if (userData.role === 'admin') {
-      navigate('/admin');
-      return;
-    }
     navigate('/files');
   };
 
@@ -179,26 +183,6 @@ function AppContent() {
     navigate(returnPath);
   };
 
-  useEffect(() => {
-    if (!user || impersonatedUser) {
-      return;
-    }
-
-    if (user.role !== 'admin') {
-      return;
-    }
-
-    const pathName = location.pathname || '';
-    const shouldRedirectToAdminOverview =
-      pathName === '/' ||
-      pathName === '/files' ||
-      pathName.startsWith('/files/');
-
-    if (shouldRedirectToAdminOverview) {
-      navigate('/admin', { replace: true });
-    }
-  }, [user, impersonatedUser, location.pathname, navigate]);
-
   if (!user) {
     return (
       <Routes>
@@ -237,7 +221,7 @@ function AppContent() {
   const isAdmin = user.role === 'admin' || user.role === 'superadmin';
   const displayUser = impersonatedUser || user;
   const showSuperadminTabs = isSuperadmin && !impersonatedUser;
-  const isAdminOnly = user.role === 'admin' && !impersonatedUser;
+  const showAdminTabs = user.role === 'admin' && !impersonatedUser;
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -382,10 +366,57 @@ function AppContent() {
           </Box>
         )}
 
+        {showAdminTabs && (
+          <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+            <Tabs
+              value={activeAdminTab}
+              onChange={(e, newValue) => navigate(adminTabPaths[newValue])}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{
+                '& .MuiTabs-indicator': {
+                  left: 0,
+                },
+                '& .MuiTabs-flexContainer': {
+                  justifyContent: 'flex-start',
+                }
+              }}
+            >
+              <Tab
+                icon={<AudioFile />}
+                label="Ljudfiler"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+              <Tab
+                icon={<People />}
+                label="Användare"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+              <Tab
+                icon={<Folder />}
+                label="Mappar"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+              <Tab
+                icon={<Settings />}
+                label="Synk"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+              <Tab
+                icon={<LinkIcon />}
+                label="Uppladdningslänkar"
+                iconPosition="start"
+                sx={{ minHeight: { xs: 48, sm: 64 } }}
+              />
+            </Tabs>
+          </Box>
+        )}
+
         <Routes>
-          <Route path="/admin" element={
-            isAdminOnly ? <AdminOverviewPage /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
-          } />
           <Route path="/upload-links" element={
             isAdmin && !impersonatedUser
               ? <ExternalUploadLinksPage />
