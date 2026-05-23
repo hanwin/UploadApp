@@ -179,6 +179,26 @@ function AppContent() {
     navigate(returnPath);
   };
 
+  useEffect(() => {
+    if (!user || impersonatedUser) {
+      return;
+    }
+
+    if (user.role !== 'admin') {
+      return;
+    }
+
+    const pathName = location.pathname || '';
+    const shouldRedirectToAdminOverview =
+      pathName === '/' ||
+      pathName === '/files' ||
+      pathName.startsWith('/files/');
+
+    if (shouldRedirectToAdminOverview) {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, impersonatedUser, location.pathname, navigate]);
+
   if (!user) {
     return (
       <Routes>
