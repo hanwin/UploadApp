@@ -1,151 +1,259 @@
 # Användarguide - Audio Upload App
 
 ## Innehåll
-1. Introduktion
-2. Komma igång
-3. Ladda upp och hantera filer
-4. Schemaläggning
-5. Roller och behörigheter
-6. Vanliga frågor
-7. Support
+1. [Introduktion](#introduktion)
+2. [Komma igång](#komma-igång)
+3. [För vanliga användare](#för-vanliga-användare)
+4. [För administratörer](#för-administratörer)
+5. [För superadministratörer](#för-superadministratörer)
+6. [Schemaläggning av uppladdningar](#schemaläggning-av-uppladdningar)
+7. [Tips och råd](#tips-och-råd)
+8. [Vanliga frågor](#vanliga-frågor)
+9. [Support](#support)
 
 ---
 
 ## Introduktion
 
-Audio Upload App är ett verktyg för att ladda upp och hantera ljudfiler.
+Audio Upload App används för att ladda upp, hantera och planera ljudfiler.
 
-Du kan:
-- logga in och ut
-- ladda upp ljudfiler
-- lyssna på uppladdade filer
-- ta bort filer du inte längre vill ha kvar
-- schemalägga när en fil ska visas
+Systemet har tre roller:
+- **Användare** - hanterar sina egna filer
+- **Admin** - hanterar användare, mappar och filer
+- **Superadmin** - har full behörighet inklusive centrala inställningar
 
-Systemet har olika roller. Vilken roll du har styr vad du ser och får göra.
+Vilka funktioner du ser beror på din roll.
 
 ---
 
 ## Komma igång
 
-### Logga in
+### Första inloggningen
 
 1. Öppna appens webbadress.
 2. Skriv in användarnamn och lösenord.
-3. Klicka på Logga in.
+3. Klicka på **Logga in**.
 
-### Om du har glömt lösenord
+### Om du glömt lösenord
 
-1. Klicka på Glömt lösenord på inloggningssidan.
-2. Fyll i din e-postadress.
-3. Följ instruktionerna du får.
-4. Skapa ett nytt lösenord och logga in igen.
+1. Klicka på **Glömt lösenord?**.
+2. Ange din e-postadress.
+3. Följ länken du får för att skapa nytt lösenord.
+4. Logga in igen.
 
-### Ändra e-post eller lösenord
+### Ändra profiluppgifter
 
 1. Klicka på profilikonen uppe till höger.
-2. Öppna Min profil.
-3. Ändra uppgifter.
-4. Klicka på Spara.
+2. Öppna **Min profil**.
+3. Ändra e-post och/eller lösenord.
+4. Klicka **Spara**.
 
 ---
 
-## Ladda upp och hantera filer
+## För vanliga användare
 
-### Vad du ser efter inloggning
+Som vanlig användare arbetar du främst med dina egna ljudfiler.
 
-Du ser en sida med uppladdning och en lista över filer.
+### Översikt
 
-### Ladda upp fil
+Efter inloggning ser du:
+- ett uppladdningsområde
+- en lista med dina filer
+- knappar för att spela upp, schemalägga och radera filer
 
-Du kan ladda upp på två sätt:
-1. Dra filen till uppladdningsrutan.
-2. Klicka i uppladdningsrutan och välj fil från datorn.
+### Ladda upp en ljudfil
 
-Om du väljer en filtyp som kan behandlas får du val om filen ska behandlas eller laddas upp direkt.
+#### Alternativ 1: Dra och släpp
+1. Dra en ljudfil från din dator.
+2. Släpp den i uppladdningsområdet.
+
+#### Alternativ 2: Välj fil
+1. Klicka i uppladdningsområdet.
+2. Välj fil på din dator.
+3. Bekräfta valet.
+
+### Om du får val om bearbetning
+
+I vissa fall får du välja om filen bara ska laddas upp eller även bearbetas.
+
+Du kan välja:
+- **Avbryt**
+- **Ladda upp utan bearbetning**
+- **Ladda upp och bearbeta**
+
+När bearbetning är klar visas filen i listan.
 
 ### Filstatus
 
-Du kan se status på filen, till exempel:
-- laddar upp
-- väntar
-- klar
+Du kan se olika statusar, till exempel:
+- **Laddar upp**
+- **Väntar**
+- **Bearbetas**
+- **Klar**
 
-### Lyssna på fil
+### Lyssna på en fil
 
-1. Klicka på play-knappen vid filen.
+1. Klicka på **Play** vid filen.
 2. Spelaren öppnas.
 3. Stäng spelaren när du är klar.
 
-### Radera fil
+### Radera en fil
 
 1. Klicka på papperskorgen vid filen.
 2. Bekräfta borttagning.
 
-Obs: borttagning är permanent.
+Observera: borttagning är permanent.
+
+### Logga ut
+
+1. Klicka på profilikonen.
+2. Välj **Logga ut**.
 
 ---
 
-## Schemaläggning
+## För administratörer
 
-Du kan välja att en fil ska visas senare.
+Som administratör har du utökad översikt och kan hjälpa användare.
 
-1. Klicka på klockikonen vid filen.
-2. Välj datum och tid.
-3. Klicka på Schemalägg.
+### Flikar för admin
 
-Fram till vald tid är filen inte synlig för andra som saknar administrativ behörighet.
+Du ser normalt:
+- **Ljudfiler**
+- **Mappar**
+- **Användare**
+
+### Flik: Ljudfiler
+
+Här kan du:
+- se filer från flera användare
+- välja mapp och ladda upp filer dit
+- spela upp filer
+- radera filer vid behov
+
+### Flik: Mappar
+
+Här kan du:
+- se alla mappar
+- öppna en mapp och se dess filer
+- skapa och redigera mappar
+
+### Flik: Användare
+
+Här kan du:
+- skapa användare
+- redigera användares uppgifter
+- ta bort användare
+- i vissa fall använda funktionen **Visa som användare** för support
+
+### Skapa ny användare
+
+1. Klicka på **Skapa ny användare**.
+2. Fyll i användarnamn, e-post, lösenord och roll.
+3. Välj mapp om rollen kräver det.
+4. Klicka på **Skapa användare**.
+
+### Redigera användare
+
+1. Klicka på redigeringsikonen vid användaren.
+2. Ändra uppgifterna du behöver.
+3. Klicka **Spara ändringar**.
+
+### Radera användare
+
+1. Klicka på papperskorgen vid användaren.
+2. Bekräfta i dialogen.
 
 ---
 
-## Roller och behörigheter
+## För superadministratörer
 
-### Användare
+Superadmin har alla funktioner som admin och dessutom full åtkomst till centrala inställningar.
 
-Kan hantera sina egna filer i sina tilldelade mappar.
+### Superadmin kan bland annat
 
-### Admin
+- hantera alla användare och roller
+- ändra övergripande systeminställningar
+- hantera behörigheter på högsta nivå
 
-Kan:
-- se och hantera filer för flera användare
-- hantera mappar
-- skapa och hantera användarkonton
+### Viktigt ansvar
 
-### Superadmin
+Som superadmin bör du:
+- använda starka lösenord
+- granska användare och roller regelbundet
+- vara försiktig med större ändringar
 
-Har samma som admin, plus:
-- full behörighet till övergripande inställningar
-- hantering av alla roller
+---
+
+## Schemaläggning av uppladdningar
+
+Du kan bestämma när en uppladdad fil ska bli synlig.
+
+### Så gör du
+
+1. Ladda upp filen.
+2. Klicka på klockikonen vid filen.
+3. Välj datum och tid.
+4. Klicka **Schemalägg**.
+
+### Vad som händer
+
+- Filen finns i systemet direkt.
+- Innan den valda tiden är filen inte synlig för alla.
+- När tiden passerar blir filen synlig automatiskt.
+
+---
+
+## Tips och råd
+
+### För alla användare
+
+- Använd tydliga filnamn så du lätt hittar rätt fil.
+- Kontrollera datum och tid noga vid schemaläggning.
+- Radera bara filer du säkert inte behöver.
+- Logga ut när du är klar.
+
+### För administratörer
+
+- Håll användarlistan uppdaterad.
+- Hjälp användare via översiktsfunktionerna.
+- Kontrollera regelbundet att mappar och användare är korrekt kopplade.
+
+### För superadministratörer
+
+- Var restriktiv med hög behörighet.
+- Ha tydliga rutiner för kontohantering.
+- Informera berörda innan större ändringar.
 
 ---
 
 ## Vanliga frågor
 
-**Hur stora filer kan jag ladda upp?**
-Kontakta din administratör om du är osäker på vilka gränser som gäller.
+**Hur stora filer kan jag ladda upp?**  
+Storleksgränsen kan variera. Fråga din administratör vid osäkerhet.
 
-**Vilka filtyper fungerar?**
-Vanligtvis ljudformat som appen är avsedd för.
+**Vilka filtyper fungerar?**  
+Systemet är avsett för ljudfiler. Om en fil nekas får du meddelande i appen.
 
-**Kan jag ångra om jag raderar en fil?**
+**Kan jag ångra om jag raderar en fil?**  
 Nej, borttagning är permanent.
 
-**Kan jag ladda upp flera filer?**
-Det beror på hur er installation är inställd. Testa eller fråga administratör.
+**Kan jag schemalägga flera filer?**  
+Ja, varje fil schemaläggs var för sig.
 
-**Jag ser inte en viss funktion, varför?**
-Funktioner styrs av din roll (användare, admin eller superadmin).
+**Varför ser jag inte alla funktioner?**  
+Funktioner styrs av din roll.
 
 ---
 
 ## Support
 
-Vid problem:
-1. Kontrollera att du är inloggad med rätt konto.
-2. Försök igen en gång till.
-3. Kontakta administratör om felet kvarstår.
+Om något inte fungerar:
 
-Skriv gärna med:
+1. Prova igen.
+2. Kontrollera att du är inloggad med rätt konto.
+3. Kontakta administratör om problemet kvarstår.
+
+Skicka gärna med:
 - vad du försökte göra
-- vilket felmeddelande du fick
-- ungefärlig tid när felet hände
+- vilket meddelande du fick
+- ungefär när problemet uppstod
