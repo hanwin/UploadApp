@@ -38,7 +38,14 @@ const csrfProtectionMiddleware = (req, res, next) => {
   const method = (req.method || '').toUpperCase();
   const isUnsafeMethod = method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE';
 
+  const pathName = req.path || '';
+  const isPublicUploadPath = pathName === '/upload-links/public-upload';
+
   if (!isUnsafeMethod) {
+    return next();
+  }
+
+  if (isPublicUploadPath) {
     return next();
   }
 

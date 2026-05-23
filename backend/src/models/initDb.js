@@ -50,6 +50,36 @@ const ensureTables = async () => {
     ['default_seq_path_template', '']
   );
 
+  await pool.query(
+    `INSERT INTO app_settings (key, value)
+     VALUES ($1, $2)
+     ON CONFLICT (key) DO NOTHING`,
+    ['public_upload_folder_name', 'link_uploads']
+  );
+
+  await pool.query(
+    `INSERT INTO app_settings (key, value)
+     VALUES ($1, $2)
+     ON CONFLICT (key) DO NOTHING`,
+    ['public_upload_folder_display_name', 'Lankuppladdningar']
+  );
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS upload_links (
+      id SERIAL PRIMARY KEY,
+      token_hash VARCHAR(64) UNIQUE NOT NULL,
+      created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      folder_name VARCHAR(255) NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      is_active BOOLEAN DEFAULT true,
+      use_count INTEGER DEFAULT 0,
+      last_used_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_upload_links_expires_at ON upload_links(expires_at)');
+
   // Create password_reset_tokens table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (

@@ -26,6 +26,7 @@ import AudioUpload from './AudioUpload';
 import AudioPlayer from './AudioPlayer';
 import ScheduleDialog from './ScheduleDialog';
 import Mp3TagsDialog from './Mp3TagsDialog';
+import UploadLinkManager from './UploadLinkManager';
 import { useToast } from '../contexts/ToastContext';
 import { io } from 'socket.io-client';
 
@@ -383,6 +384,8 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
           ) : (
             <>
               {/* Upload section - only show if folder is available */}
+              <UploadLinkManager />
+
               {(selectedFolder || (user.folders && user.folders.length > 0)) ? (
                 <Box sx={{ mb: 3 }}>
                   <AudioUpload 

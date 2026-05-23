@@ -123,4 +123,24 @@ export const settingsAPI = {
   update: (data) => api.put('/settings', data),
 };
 
+// Upload links API
+export const uploadLinkAPI = {
+  getMine: () => api.get('/upload-links'),
+  create: (validDays) => api.post('/upload-links', { validDays }),
+  getPublicInfo: (token) => axios.get(`${API_URL}/upload-links/public-info?token=${encodeURIComponent(token || '')}`),
+  publicUpload: (formData, token, options = {}) => {
+    return axios.post(
+      `${API_URL}/upload-links/public-upload?token=${encodeURIComponent(token || '')}`,
+      formData,
+      {
+        timeout: 14400000,
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        ...options
+      }
+    );
+  }
+};
+
 export default api;

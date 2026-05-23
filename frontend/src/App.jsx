@@ -15,6 +15,7 @@ import { Logout as LogoutIcon, AudioFile, People, Folder, AccountCircle, Setting
 import Login from './components/Login';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import PublicUploadPage from './components/PublicUploadPage';
 import AudioList from './components/AudioList';
 import UserManagement from './components/UserManagement';
 import FolderManagement from './components/FolderManagement';
@@ -171,6 +172,12 @@ function AppContent() {
   if (!user) {
     return (
       <Routes>
+        <Route path="/public-upload" element={
+          <>
+            <PublicUploadPage />
+            <Toast />
+          </>
+        } />
         <Route path="/forgot-password" element={
           <>
             <ForgotPassword onBack={() => navigate('/login')} />
@@ -339,6 +346,7 @@ function AppContent() {
         )}
 
         <Routes>
+          <Route path="/public-upload" element={<PublicUploadPage />} />
           <Route path="/folders" element={
             showAdminTabs ? <FolderManagement user={user} /> : <AudioList user={displayUser} refreshTrigger={refreshTrigger} onUploadSuccess={handleUploadSuccess} impersonatedUserId={impersonatedUser?.id} />
           } />

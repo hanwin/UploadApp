@@ -14,6 +14,8 @@ function sanitizeDefaultSeqPath(value) {
 }
 
 const SETTING_KEY = 'default_seq_path_template';
+const PUBLIC_FOLDER_NAME_KEY = 'public_upload_folder_name';
+const PUBLIC_FOLDER_DISPLAY_NAME_KEY = 'public_upload_folder_display_name';
 
 const getSettings = async (req, res) => {
   try {
@@ -62,8 +64,28 @@ const getDefaultSeqPathTemplate = async () => {
   return result.rows[0]?.value || '';
 };
 
+const getPublicUploadFolderName = async () => {
+  const result = await pool.query(
+    'SELECT value FROM app_settings WHERE key = $1 LIMIT 1',
+    [PUBLIC_FOLDER_NAME_KEY]
+  );
+
+  return (result.rows[0]?.value || 'link_uploads').trim() || 'link_uploads';
+};
+
+const getPublicUploadFolderDisplayName = async () => {
+  const result = await pool.query(
+    'SELECT value FROM app_settings WHERE key = $1 LIMIT 1',
+    [PUBLIC_FOLDER_DISPLAY_NAME_KEY]
+  );
+
+  return (result.rows[0]?.value || 'Lankuppladdningar').trim() || 'Lankuppladdningar';
+};
+
 module.exports = {
   getSettings,
   updateSettings,
-  getDefaultSeqPathTemplate
+  getDefaultSeqPathTemplate,
+  getPublicUploadFolderName,
+  getPublicUploadFolderDisplayName
 };

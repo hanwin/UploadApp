@@ -6,7 +6,7 @@ const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const { writeTags } = require('../services/mp3Tags');
 const { writeCurrentSeq } = require('../utils/currentSeq');
 const { getAudioDurationSeconds } = require('../utils/audioDuration');
-const { getDefaultSeqPathTemplate } = require('./settingsController');
+const { getDefaultSeqPathTemplate, getPublicUploadFolderName } = require('./settingsController');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -202,14 +202,17 @@ const uploadAudio = async (req, res) => {
       console.error('Failed to detect audio duration for current.seq:', durationError.message);
     }
 
-    // Write current.seq with filename in folder
+    // Write current.seq for regular folders only.
     try {
-      const defaultSeqPathTemplate = await getDefaultSeqPathTemplate();
-      const uploadsRoot = path.join(__dirname, '../../uploads');
-      const folderPath = path.join(uploadsRoot, dbFolder);
-      writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds, {
-        defaultSeqPath: defaultSeqPathTemplate
-      });
+      const publicUploadFolderName = await getPublicUploadFolderName();
+      if (dbFolder !== publicUploadFolderName) {
+        const defaultSeqPathTemplate = await getDefaultSeqPathTemplate();
+        const uploadsRoot = path.join(__dirname, '../../uploads');
+        const folderPath = path.join(uploadsRoot, dbFolder);
+        writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds, {
+          defaultSeqPath: defaultSeqPathTemplate
+        });
+      }
     } catch (error) {
       console.error('Failed to write current.seq:', error);
       // Don't fail the upload if current.seq writing fails
@@ -483,12 +486,18 @@ const updateBroadcastTime = async (req, res) => {
       [broadcastTime || null, fileId]
     );
 
-    // Write current.seq when a broadcast time is set
+    // Write current.seq when a broadcast time is set for regular folders.
     if (broadcastTime) {
       try {
         const { normalizeFolderName } = require('../utils/normalizeFolderName');
         const uploadsRoot = path.join(__dirname, '../../uploads');
         const safeFolder = normalizeFolderName(file.folder);
+        const publicUploadFolderName = await getPublicUploadFolderName();
+
+        if (safeFolder === publicUploadFolderName) {
+          return res.json(result.rows[0]);
+        }
+
         const folderPath = path.join(uploadsRoot, safeFolder);
 
         let durationSeconds = Number.isFinite(file.duration) ? file.duration : null;
@@ -503,11 +512,7 @@ const updateBroadcastTime = async (req, res) => {
           }
         }
 
-        const folderDefaultsResult = await pool.query(
-          'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
-          [safeFolder]
-        );
-        const defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || null;
+        const defaultSeqPath = await getDefaultSeqPathTemplate();
 
         writeCurrentSeq(folderPath, file.original_name, durationSeconds, {
           defaultSeqPath
