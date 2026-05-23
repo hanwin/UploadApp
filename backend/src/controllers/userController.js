@@ -297,7 +297,7 @@ const updateOwnProfile = async (req, res) => {
   }
 };
 
-// Update user profile (superadmin only - can update any user)
+// Update user profile (admin/superadmin - can update regular users)
 const updateUserProfile = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -307,6 +307,11 @@ const updateUserProfile = async (req, res) => {
     const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'Användaren hittades inte' });
+    }
+
+    // Admins may not edit superadmin accounts.
+    if (req.user.role !== 'superadmin' && userResult.rows[0].role === 'superadmin') {
+      return res.status(403).json({ error: 'Du kan inte redigera superadmin-användare' });
     }
 
     const updates = [];

@@ -36,6 +36,7 @@ import { useToast } from '../contexts/ToastContext';
 
 function UserManagement({ user, onViewAsUser }) {
   const isSuperadmin = user?.role === 'superadmin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   const [users, setUsers] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -514,7 +515,7 @@ function UserManagement({ user, onViewAsUser }) {
                     }}
                   >
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-                      {isSuperadmin && u.role !== 'superadmin' && (
+                      {isAdmin && u.role !== 'superadmin' && (
                         <IconButton
                           color="primary"
                           onClick={(event) => openActionMenu(event, u)}
@@ -557,16 +558,18 @@ function UserManagement({ user, onViewAsUser }) {
             <Edit fontSize="small" sx={{ mr: 1 }} />
             Redigera användare
           </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setConfirmDelete(actionMenu.user);
-              closeActionMenu();
-            }}
-            sx={{ color: 'error.main' }}
-          >
-            <Delete fontSize="small" sx={{ mr: 1 }} />
-            Ta bort användare
-          </MenuItem>
+          {isSuperadmin && (
+            <MenuItem
+              onClick={() => {
+                setConfirmDelete(actionMenu.user);
+                closeActionMenu();
+              }}
+              sx={{ color: 'error.main' }}
+            >
+              <Delete fontSize="small" sx={{ mr: 1 }} />
+              Ta bort användare
+            </MenuItem>
+          )}
         </Menu>
 
         <Popover

@@ -19,6 +19,6 @@ router.put('/:id', authMiddleware, superadminMiddleware, updateUserRole);
 
 // Profile update routes
 router.patch('/profile/me', authMiddleware, updateOwnProfile);
-router.patch('/:userId/profile', authMiddleware, superadminMiddleware, updateUserProfile);
+router.patch('/:userId/profile', authMiddleware, adminMiddleware, updateUserProfile);
 
 module.exports = router;
