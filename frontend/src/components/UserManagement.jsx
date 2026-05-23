@@ -35,6 +35,7 @@ import EditUserDialog from './EditUserDialog';
 import { useToast } from '../contexts/ToastContext';
 
 function UserManagement({ user, onViewAsUser }) {
+  const isSuperadmin = user?.role === 'superadmin';
   const [users, setUsers] = useState([]);
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -472,7 +473,7 @@ function UserManagement({ user, onViewAsUser }) {
                   <TableCell>
                     {u.role === 'superadmin' ? (
                       <Chip label="Superadmin" color="secondary" size="small" />
-                    ) : (
+                    ) : isSuperadmin ? (
                       <FormControl size="small" sx={{ minWidth: { xs: 80, sm: 120 } }}>
                         <Select
                           value={u.role}
@@ -482,6 +483,8 @@ function UserManagement({ user, onViewAsUser }) {
                           <MenuItem value="admin">Admin</MenuItem>
                         </Select>
                       </FormControl>
+                    ) : (
+                      <Chip label={u.role === 'admin' ? 'Admin' : 'Användare'} size="small" />
                     )}
                   </TableCell>
                   <TableCell>
@@ -511,7 +514,7 @@ function UserManagement({ user, onViewAsUser }) {
                     }}
                   >
                     <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-                      {u.role !== 'superadmin' && (
+                      {isSuperadmin && u.role !== 'superadmin' && (
                         <IconButton
                           color="primary"
                           onClick={(event) => openActionMenu(event, u)}
@@ -534,7 +537,7 @@ function UserManagement({ user, onViewAsUser }) {
           open={Boolean(actionMenu.anchorEl)}
           onClose={closeActionMenu}
         >
-          {actionMenu.user?.role !== 'admin' && (
+          {isSuperadmin && actionMenu.user?.role !== 'admin' && (
             <MenuItem
               onClick={() => {
                 onViewAsUser(actionMenu.user);

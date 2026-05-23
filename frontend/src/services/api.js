@@ -124,6 +124,10 @@ export const settingsAPI = {
   syncStorage: (dryRun = false) => api.post('/settings/sync-storage', { dryRun }),
 };
 
+export const adminToolsAPI = {
+  syncStorage: (dryRun = false) => api.post('/admin-tools/sync-storage', { dryRun }),
+};
+
 // Upload links API
 export const uploadLinkAPI = {
   getMine: () => api.get('/upload-links'),

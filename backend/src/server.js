@@ -11,6 +11,7 @@ const audioRoutes = require('./routes/audio');
 const userRoutes = require('./routes/users');
 const folderRoutes = require('./routes/folders');
 const settingsRoutes = require('./routes/settings');
+const adminToolsRoutes = require('./routes/adminTools');
 const uploadLinksRoutes = require('./routes/uploadLinks');
 const mp3TagsRoutes = require('./routes/mp3tags');
 const { startScheduleChecker } = require('./services/scheduleService');
@@ -73,6 +74,7 @@ app.use('/api/audio', audioRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/folders', folderRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/admin-tools', adminToolsRoutes);
 app.use('/api/upload-links', uploadLinksRoutes);
 app.use('/api/mp3tags', mp3TagsRoutes);
 if (process.env.ENABLE_TEST_UPLOAD_ROUTE === 'true') {
