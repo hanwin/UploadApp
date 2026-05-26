@@ -160,19 +160,17 @@ const ensureSuperadmin = async () => {
   }
 
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
-  try {
-    await pool.query(
-      'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)',
-      ['superadmin', 'superadmin@example.com', hashedPassword, 'superadmin']
-    );
+  const result = await pool.query(
+    `INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (username) DO NOTHING`,
+    ['superadmin', 'superadmin@example.com', hashedPassword, 'superadmin']
+  );
+  
+  if (result.rowCount === 1) {
     console.log('✓ Default superadmin user created (username: superadmin)');
     console.log('⚠ Change the password immediately after first login!');
-  } catch (err) {
-    if (err.code === '23505') {
-      console.log('✓ Superadmin user already exists');
-    } else {
-      throw err;
-    }
+  } else {
+    console.log('✓ Superadmin user already exists');
   }
 };
 
