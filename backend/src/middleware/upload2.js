@@ -59,7 +59,10 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     debugLog('Multer filename: ' + file.originalname);
-    cb(null, file.originalname);
+    const safeName = path.basename(
+      Buffer.from(file.originalname, 'latin1').toString('utf8').normalize('NFC')
+    );
+    cb(null, safeName);
   }
 });
 

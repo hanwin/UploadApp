@@ -314,6 +314,9 @@ async function processAudioFile(fileId) {
       });
       console.log(`[AudioProcessor] Updated seq file with ${processedDisplayName}`);
     } catch (error) {
+      if (error && error.code === 'CP1252_ENCODING_ERROR') {
+        throw error;
+      }
       console.error(`[AudioProcessor] Failed to write seq file:`, error);
       // Don't fail processing if current.seq writing fails
     }

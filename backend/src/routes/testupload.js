@@ -17,14 +17,15 @@ const storage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     fs.appendFileSync(path.join(__dirname, '../../uploads/upload-debug.log'), new Date().toISOString() + ' TEST filename: ' + file.originalname + '\n');
-    cb(null, file.originalname);
+    const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8').normalize('NFC');
+    cb(null, path.basename(decodedName));
   }
 });
 
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+    const decodedName = Buffer.from(file.originalname, 'latin1').toString('utf8').normalize('NFC');
     const canonicalMimeType = getCanonicalAudioMimeType(decodedName);
     if (!canonicalMimeType) {
       return cb(new Error('Only MP3 and WAV files are allowed'), false);

@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { encodeCp1252Strict, decodeCp1252 } = require('./cp1252');
 
 const DEFAULT_CURRENT_TEMPLATE = [
   '[playlist]',
@@ -47,13 +48,16 @@ function getTemplatePath(folderPath) {
     return legacyTemplatePath;
   }
 
-  fs.writeFileSync(namedTemplatePath, DEFAULT_CURRENT_TEMPLATE, 'utf-8');
+  fs.writeFileSync(
+    namedTemplatePath,
+    encodeCp1252Strict(DEFAULT_CURRENT_TEMPLATE, `template ${namedTemplatePath}`)
+  );
   return namedTemplatePath;
 }
 
 function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const templatePath = getTemplatePath(folderPath);
-  const template = fs.readFileSync(templatePath, 'utf-8');
+  const template = decodeCp1252(fs.readFileSync(templatePath));
   const formattedLength = formatAudioLength(durationSeconds);
   const folderName = path.basename(folderPath);
   const filenameAsString = String(filename || '');
@@ -111,7 +115,10 @@ function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
   const seqFilenameValue = resolveSeqFilenameValue(filename, folderName, options.defaultSeqPath);
   const content = buildCurrentSeqContent(folderPath, seqFilenameValue, durationSeconds);
 
-  fs.writeFileSync(currentSeqPath, content, 'utf-8');
+  fs.writeFileSync(
+    currentSeqPath,
+    encodeCp1252Strict(content, `seq ${currentSeqPath}`)
+  );
 
   // Remove legacy current.seq and .seq.seq so only the new file name is used.
   if (fs.existsSync(legacyCurrentSeqPath)) {
@@ -136,7 +143,7 @@ function removeSeqReferenceForFile(folderPath, filename) {
     return;
   }
 
-  const content = fs.readFileSync(currentSeqPath, 'utf-8');
+  const content = decodeCp1252(fs.readFileSync(currentSeqPath));
   const lines = content.split(/\r?\n/);
   let changed = false;
 
@@ -166,7 +173,10 @@ function removeSeqReferenceForFile(folderPath, filename) {
   });
 
   if (changed) {
-    fs.writeFileSync(currentSeqPath, nextLines.join('\n'), 'utf-8');
+    fs.writeFileSync(
+      currentSeqPath,
+      encodeCp1252Strict(nextLines.join('\n'), `seq ${currentSeqPath}`)
+    );
   }
 }
 

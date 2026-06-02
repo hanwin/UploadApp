@@ -19,6 +19,8 @@ const applyTagTemplate = (template, context) => {
     .trim();
 };
 
+const isCp1252EncodingError = (error) => error && error.code === 'CP1252_ENCODING_ERROR';
+
 // Upload audio file
 const uploadAudio = async (req, res) => {
   try {
@@ -214,6 +216,27 @@ const uploadAudio = async (req, res) => {
         });
       }
     } catch (error) {
+      if (isCp1252EncodingError(error)) {
+        try {
+          await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+        } catch (rollbackDbError) {
+          console.error('Failed to rollback DB after CP1252 error:', rollbackDbError);
+        }
+
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (rollbackFileError) {
+          console.error('Failed to rollback file after CP1252 error:', rollbackFileError);
+        }
+
+        return res.status(422).json({
+          error: error.userMessage || 'Filnamn eller sökväg innehåller tecken som inte stöds av CP1252.',
+          details: error.message
+        });
+      }
+
       console.error('Failed to write current.seq:', error);
       // Don't fail the upload if current.seq writing fails
     }
@@ -518,6 +541,18 @@ const updateBroadcastTime = async (req, res) => {
           defaultSeqPath
         });
       } catch (seqError) {
+        if (isCp1252EncodingError(seqError)) {
+          await pool.query(
+            'UPDATE audio_files SET broadcast_time = $1 WHERE id = $2',
+            [file.broadcast_time || null, fileId]
+          );
+
+          return res.status(422).json({
+            error: seqError.userMessage || 'Filnamn eller sökväg innehåller tecken som inte stöds av CP1252.',
+            details: seqError.message
+          });
+        }
+
         console.error('Failed to write current.seq on schedule:', seqError);
       }
     }

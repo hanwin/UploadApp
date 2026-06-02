@@ -9,7 +9,8 @@
     "init-db": "node src/models/initDb.js",
     "reset-test-data": "node scripts/reset-for-testing.js",
     "check-id3-encoding": "node scripts/check-id3-encoding.js",
-    "sync-db-files": "node scripts/sync-db-with-filesystem.js"
+    "sync-db-files": "node scripts/sync-db-with-filesystem.js",
+    "migrate-seq-cp1252": "node scripts/migrate-seq-template-to-cp1252.js"
   },
   "keywords": [
     "audio",

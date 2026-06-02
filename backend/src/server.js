@@ -102,6 +102,13 @@ app.use((err, req, res, next) => {
     const filename = err.message.split(':')[1];
     return res.status(409).json({ error: err.message, filename });
   }
+
+  if (err.code === 'CP1252_ENCODING_ERROR') {
+    return res.status(422).json({
+      error: err.userMessage || 'Filnamn eller sökväg innehåller tecken som inte stöds av CP1252.',
+      details: err.message
+    });
+  }
   
   res.status(500).json({ error: 'Något gick fel!' });
 });

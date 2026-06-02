@@ -1,6 +1,7 @@
 const pool = require('../models/db');
 const fs = require('fs');
 const path = require('path');
+const { encodeCp1252Strict } = require('../utils/cp1252');
 
 const UPLOADS_DIR = path.join(__dirname, '../../uploads');
 
@@ -48,7 +49,10 @@ const checkScheduledFiles = async () => {
         }).join('\n') + '\n';
 
         // Append to folder's scheduled.seq
-        fs.appendFileSync(scheduledFile, lines);
+        fs.appendFileSync(
+          scheduledFile,
+          encodeCp1252Strict(lines, `scheduled seq ${scheduledFile}`)
+        );
         
         console.log(`✓ Wrote ${files.length} scheduled file(s) to ${folder}/scheduled.seq`);
       }
