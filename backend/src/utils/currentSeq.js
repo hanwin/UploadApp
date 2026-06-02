@@ -29,7 +29,17 @@ function normalizePathSeparators(value) {
 }
 
 function stripTrailingFilenamePlaceholder(value) {
-  return String(value || '').replace(/[\\/]?\{filename\}\s*$/i, '');
+  return String(value || '').replace(/[\\/]?\{filename[\}\]]\s*$/i, '');
+}
+
+function replaceFolderPlaceholders(value, folderName) {
+  return String(value || '')
+    .replace(/\{foldername[\}\]]/gi, folderName)
+    .replace(/\{folder[\}\]]/gi, folderName);
+}
+
+function replaceFilenamePlaceholders(value, filename) {
+  return String(value || '').replace(/\{filename[\}\]]/gi, filename);
 }
 
 function getTemplatePath(folderPath) {
@@ -63,24 +73,23 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const filenameAsString = String(filename || '');
   const lines = template.split(/\r?\n/);
   const resolvedLines = lines.map((line) => {
-    if (!/^\s*file\d+\s*=/i.test(line)) {
-      return line;
+    const lineWithFolder = replaceFolderPlaceholders(line, folderName);
+
+    if (!/^\s*file\d+\s*=/i.test(lineWithFolder)) {
+      return replaceFilenamePlaceholders(lineWithFolder, filenameAsString);
     }
 
-    const separatorIndex = line.indexOf('=');
-    const key = line.slice(0, separatorIndex).trim();
-    const value = line.slice(separatorIndex + 1);
-    const hasFolderPlaceholders = /\{foldername\}|\{folder\}/i.test(value);
+    const separatorIndex = lineWithFolder.indexOf('=');
+    const key = lineWithFolder.slice(0, separatorIndex).trim();
+    const value = lineWithFolder.slice(separatorIndex + 1);
+    const hasFolderPlaceholders = /\{foldername[\}\]]|\{folder[\}\]]/i.test(line);
     const filenameHasPath = /[\\/]/.test(filenameAsString);
     const normalizedFilename = filenameAsString.replace(/\\\\/g, '\\');
     const filenameValue = (hasFolderPlaceholders && filenameHasPath)
       ? path.win32.basename(normalizedFilename)
       : normalizedFilename;
 
-    const resolvedValue = value
-      .replace(/\{foldername\}/gi, folderName)
-      .replace(/\{folder\}/gi, folderName)
-      .replace(/\{filename\}/gi, filenameValue);
+    const resolvedValue = replaceFilenamePlaceholders(value, filenameValue);
 
     return `${key}=${normalizePathSeparators(resolvedValue)}`;
   });
@@ -98,11 +107,11 @@ function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
 
   const resolved = sanitizedDefaultSeqPath
     .trim()
-    .replace(/\{foldername\}/gi, folderName)
-    .replace(/\{folder\}/gi, folderName)
-    .replace(/\{filename\}/gi, cleanFilename);
+    .replace(/\{foldername[\}\]]/gi, folderName)
+    .replace(/\{folder[\}\]]/gi, folderName)
+    .replace(/\{filename[\}\]]/gi, cleanFilename);
 
-  if (/\{filename\}/i.test(sanitizedDefaultSeqPath)) {
+  if (/\{filename[\}\]]/i.test(sanitizedDefaultSeqPath)) {
     return normalizePathSeparators(resolved);
   }
 

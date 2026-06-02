@@ -98,7 +98,7 @@ function SystemSettings() {
         <TextField
           fullWidth
           margin="dense"
-          label="Default file0-mall för seq"
+          label="Default sökväg"
           value={defaultSeqPathTemplate}
           onChange={(e) => setDefaultSeqPathTemplate(sanitizeDefaultSeqPath(e.target.value))}
           helperText={`Exempel: ${DEFAULT_SEQ_PATH_EXAMPLE}`}
