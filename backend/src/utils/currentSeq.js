@@ -63,11 +63,13 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
   const filenameAsString = String(filename || '');
   const lines = template.split(/\r?\n/);
   const resolvedLines = lines.map((line) => {
-    if (!line.trim().toLowerCase().startsWith('file0=')) {
+    if (!/^\s*file\d+\s*=/i.test(line)) {
       return line;
     }
 
-    const value = line.slice(line.indexOf('=') + 1);
+    const separatorIndex = line.indexOf('=');
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1);
     const hasFolderPlaceholders = /\{foldername\}|\{folder\}/i.test(value);
     const filenameHasPath = /[\\/]/.test(filenameAsString);
     const normalizedFilename = filenameAsString.replace(/\\\\/g, '\\');
@@ -80,7 +82,7 @@ function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
       .replace(/\{folder\}/gi, folderName)
       .replace(/\{filename\}/gi, filenameValue);
 
-    return `file0=${normalizePathSeparators(resolvedValue)}`;
+    return `${key}=${normalizePathSeparators(resolvedValue)}`;
   });
 
   return resolvedLines.join('\n').replace(/\{length\}/gi, formattedLength);
