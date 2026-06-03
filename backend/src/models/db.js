@@ -11,11 +11,6 @@ const pool = new Pool({
   client_encoding: 'UTF8'
 });
 
-// Test connection
-pool.on('connect', () => {
-  console.log('✓ Database connected');
-});
-
 pool.on('error', (err) => {
   console.error('Unexpected database error:', err);
 });

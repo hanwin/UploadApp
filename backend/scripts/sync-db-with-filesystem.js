@@ -128,6 +128,7 @@ async function syncDbWithFilesystem(options = {}) {
     diskFiles: 0,
     filesMissingInDb: 0,
     insertedFileRows: 0,
+    skippedNonAudioFileRows: 0,
     skippedUnsupportedFileRows: 0,
     skippedNoOwnerFileRows: 0,
     skippedExistingByFolderFilenameRows: 0,
@@ -369,16 +370,19 @@ async function syncDbWithFilesystem(options = {}) {
     const fallbackOwnerId = fallbackOwnerResult.rows[0]?.id || null;
 
     if (dryRun) {
+      summary.skippedNonAudioFileRows = filesMissingInDb.filter(
+        (diskFile) => !getCanonicalAudioMimeType(diskFile.filename)
+      ).length;
       console.log(`${logPrefix}Dry run file import complete. No file rows inserted.`);
     } else {
       await pool.query('BEGIN');
       try {
         for (const diskFile of filesMissingInDb) {
           const canonicalMimeType = getCanonicalAudioMimeType(diskFile.filename);
-          if (!canonicalMimeType) {
-            summary.skippedUnsupportedFileRows += 1;
-            continue;
-          }
+            if (!canonicalMimeType) {
+              summary.skippedNonAudioFileRows += 1;
+              continue;
+            }
 
           const ownerUserId = ownerByFolder.get(diskFile.folderName) || fallbackOwnerId;
           if (!ownerUserId) {
@@ -426,7 +430,7 @@ async function syncDbWithFilesystem(options = {}) {
   }
 
   console.log(
-    `${logPrefix}File import summary: inserted=${summary.insertedFileRows}, unsupported=${summary.skippedUnsupportedFileRows}, no_owner=${summary.skippedNoOwnerFileRows}, existing_by_name=${summary.skippedExistingByFolderFilenameRows}`
+    `${logPrefix}File import summary: inserted=${summary.insertedFileRows}, non_audio_skipped=${summary.skippedNonAudioFileRows}, unsupported=${summary.skippedUnsupportedFileRows}, no_owner=${summary.skippedNoOwnerFileRows}, existing_by_name=${summary.skippedExistingByFolderFilenameRows}`
   );
 
   return summary;
