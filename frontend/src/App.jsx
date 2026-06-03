@@ -23,10 +23,12 @@ import AdminSyncPage from './components/AdminSyncPage';
 import SystemSettings from './components/SystemSettings';
 import ExternalUploadLinksPage from './components/ExternalUploadLinksPage';
 import ActivityLogs from './components/ActivityLogs';
+import VersionDialog from './components/VersionDialog';
 import ProfileDialog from './components/ProfileDialog';
 import Toast from './components/Toast';
 import { ToastProvider } from './contexts/ToastContext';
 import { authAPI } from './services/api';
+import { APP_VERSION } from './version';
 
 function AppContent() {
   const IMPERSONATION_RETURN_PATH_KEY = 'impersonationReturnPath';
@@ -35,6 +37,7 @@ function AppContent() {
   const [impersonatedUser, setImpersonatedUser] = useState(null);
   const [realUser, setRealUser] = useState(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [versionDialogOpen, setVersionDialogOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -241,6 +244,26 @@ function AppContent() {
           >
             Audio Upload App
           </Typography>
+          <Box
+            component="span"
+            onClick={() => setVersionDialogOpen(true)}
+            sx={{
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              opacity: 0.75,
+              cursor: 'pointer',
+              border: '1px solid rgba(255,255,255,0.4)',
+              borderRadius: '12px',
+              px: 1,
+              py: '2px',
+              mr: { xs: 1, sm: 2 },
+              whiteSpace: 'nowrap',
+              '&:hover': { opacity: 1, bgcolor: 'rgba(255,255,255,0.1)' },
+              transition: 'opacity 0.2s',
+            }}
+          >
+            v{APP_VERSION}
+          </Box>
           <Typography 
             variant="body2" 
             sx={{ 
@@ -283,6 +306,12 @@ function AppContent() {
         onUpdate={(updatedUser) => {
           setUser({ ...user, ...updatedUser });
         }}
+      />
+
+      {/* Version Dialog */}
+      <VersionDialog
+        open={versionDialogOpen}
+        onClose={() => setVersionDialogOpen(false)}
       />
 
       {/* Impersonation Banner */}
