@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const pool = require('../src/models/db');
+const { getCanonicalAudioMimeType } = require('../src/utils/audioMime');
 
 function resolveUploadsRoot() {
   const containerUploads = '/app/uploads';
@@ -63,6 +64,55 @@ function getDiskFolders(uploadsRoot) {
     .sort((a, b) => a.localeCompare(b, 'sv'));
 }
 
+function getDiskFiles(uploadsRoot, folderNames) {
+  const files = [];
+
+  for (const folderName of folderNames) {
+    const folderPath = path.join(uploadsRoot, folderName);
+    if (!fs.existsSync(folderPath)) {
+      continue;
+    }
+
+    let entries = [];
+    try {
+      entries = fs.readdirSync(folderPath, { withFileTypes: true });
+    } catch (error) {
+      // Ignore unreadable folders and continue with the rest.
+      continue;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      const absolutePath = path.join(folderPath, entry.name);
+      let fileSize = 0;
+      try {
+        fileSize = fs.statSync(absolutePath).size;
+      } catch (error) {
+        // Skip files we cannot stat.
+        continue;
+      }
+
+      files.push({
+        folderName,
+        filename: entry.name,
+        absolutePath,
+        fileSize
+      });
+    }
+  }
+
+  return files.sort((a, b) => {
+    const folderCompare = a.folderName.localeCompare(b.folderName, 'sv');
+    if (folderCompare !== 0) {
+      return folderCompare;
+    }
+    return a.filename.localeCompare(b.filename, 'sv');
+  });
+}
+
 async function syncDbWithFilesystem(options = {}) {
   const dryRun = options.dryRun === true;
   const logPrefix = options.logPrefix ? `${options.logPrefix} ` : '';
@@ -75,6 +125,12 @@ async function syncDbWithFilesystem(options = {}) {
     missingFiles: 0,
     duplicateFileRows: 0,
     deletedFileRows: 0,
+    diskFiles: 0,
+    filesMissingInDb: 0,
+    insertedFileRows: 0,
+    skippedUnsupportedFileRows: 0,
+    skippedNoOwnerFileRows: 0,
+    skippedExistingByFolderFilenameRows: 0,
     diskFolders: 0,
     dbFolders: 0,
     insertedFolders: 0,
@@ -96,6 +152,7 @@ async function syncDbWithFilesystem(options = {}) {
 
   const missing = [];
   const duplicates = [];
+  const existingResolvedPathSet = new Set();
 
   // Step 1: Find missing files and identify duplicates
   const filePathGroups = {};
@@ -107,6 +164,8 @@ async function syncDbWithFilesystem(options = {}) {
         checked_paths: fileCheck.candidates
       });
     } else {
+      existingResolvedPathSet.add(path.resolve(fileCheck.resolvedPath));
+
       // Group by file_path to find duplicates
       if (!filePathGroups[row.file_path]) {
         filePathGroups[row.file_path] = [];
@@ -278,6 +337,97 @@ async function syncDbWithFilesystem(options = {}) {
   } else {
     console.log(`${logPrefix}Folder sync summary: inserted=${summary.insertedFolders}, deleted=${summary.deletedFolders}, skipped=${summary.skippedFolderDeletes}, orphan_user_folders_deleted=${summary.deletedOrphanUserFolders}`);
   }
+
+  // File import synchronization: create DB rows for files that only exist on disk.
+  const diskFiles = getDiskFiles(uploadsRoot, diskFolderNames);
+  summary.diskFiles = diskFiles.length;
+
+  const filesMissingInDb = diskFiles.filter((diskFile) => {
+    const normalizedPath = path.resolve(diskFile.absolutePath);
+    return !existingResolvedPathSet.has(normalizedPath);
+  });
+
+  summary.filesMissingInDb = filesMissingInDb.length;
+  console.log(`${logPrefix}Disk files scanned: ${summary.diskFiles}`);
+  console.log(`${logPrefix}Disk files missing in DB: ${summary.filesMissingInDb}`);
+
+  if (filesMissingInDb.length > 0) {
+    const ownerRows = await pool.query(
+      `SELECT folder_name, MIN(user_id)::int AS user_id
+       FROM user_folders
+       GROUP BY folder_name`
+    );
+    const ownerByFolder = new Map(ownerRows.rows.map((row) => [row.folder_name, row.user_id]));
+
+    const fallbackOwnerResult = await pool.query(
+      `SELECT id
+       FROM users
+       WHERE role IN ('superadmin', 'admin')
+       ORDER BY CASE WHEN role = 'superadmin' THEN 0 ELSE 1 END, id ASC
+       LIMIT 1`
+    );
+    const fallbackOwnerId = fallbackOwnerResult.rows[0]?.id || null;
+
+    if (dryRun) {
+      console.log(`${logPrefix}Dry run file import complete. No file rows inserted.`);
+    } else {
+      await pool.query('BEGIN');
+      try {
+        for (const diskFile of filesMissingInDb) {
+          const canonicalMimeType = getCanonicalAudioMimeType(diskFile.filename);
+          if (!canonicalMimeType) {
+            summary.skippedUnsupportedFileRows += 1;
+            continue;
+          }
+
+          const ownerUserId = ownerByFolder.get(diskFile.folderName) || fallbackOwnerId;
+          if (!ownerUserId) {
+            summary.skippedNoOwnerFileRows += 1;
+            continue;
+          }
+
+          const existingByFolderFilename = await pool.query(
+            'SELECT 1 FROM audio_files WHERE folder = $1 AND filename = $2 LIMIT 1',
+            [diskFile.folderName, diskFile.filename]
+          );
+
+          if (existingByFolderFilename.rows.length > 0) {
+            summary.skippedExistingByFolderFilenameRows += 1;
+            continue;
+          }
+
+          const normalizedOriginalName = String(diskFile.filename).normalize('NFC');
+
+          await pool.query(
+            `INSERT INTO audio_files (user_id, filename, original_name, file_path, file_size, mime_type, folder, processing_status, delete_original_on_success)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              ownerUserId,
+              diskFile.filename,
+              normalizedOriginalName,
+              diskFile.absolutePath,
+              diskFile.fileSize,
+              canonicalMimeType,
+              diskFile.folderName,
+              'none',
+              false
+            ]
+          );
+
+          summary.insertedFileRows += 1;
+        }
+
+        await pool.query('COMMIT');
+      } catch (error) {
+        await pool.query('ROLLBACK');
+        throw error;
+      }
+    }
+  }
+
+  console.log(
+    `${logPrefix}File import summary: inserted=${summary.insertedFileRows}, unsupported=${summary.skippedUnsupportedFileRows}, no_owner=${summary.skippedNoOwnerFileRows}, existing_by_name=${summary.skippedExistingByFolderFilenameRows}`
+  );
 
   return summary;
 }
