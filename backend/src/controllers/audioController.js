@@ -275,10 +275,10 @@ const getUserAudioFiles = async (req, res) => {
       return res.json([]); // Return empty array if no folders assigned
     }
     
-    // Return files from all user's assigned folders
+    // Return all files in user's assigned folders (regardless of uploader)
     const result = await pool.query(
-      'SELECT * FROM audio_files WHERE user_id = $1 AND folder = ANY($2) ORDER BY uploaded_at DESC',
-      [req.user.id, folderNames]
+      'SELECT * FROM audio_files WHERE folder = ANY($1) ORDER BY uploaded_at DESC',
+      [folderNames]
     );
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
