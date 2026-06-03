@@ -148,4 +148,8 @@ export const uploadLinkAPI = {
   }
 };
 
+export const logsAPI = {
+  getLogs: (params = {}) => api.get('/logs', { params }),
+};
+
 export default api;

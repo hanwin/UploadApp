@@ -141,6 +141,29 @@ const ensureTables = async () => {
     USING file_size::BIGINT
   `);
 
+  // Activity log table for admin audit trail
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS activity_logs (
+      id SERIAL PRIMARY KEY,
+      event_type VARCHAR(50) NOT NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      username VARCHAR(100),
+      ip_address VARCHAR(45),
+      details JSONB,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_activity_logs_event_type ON activity_logs(event_type)
+  `);
+
   console.log('✓ Database tables created successfully');
 };
 

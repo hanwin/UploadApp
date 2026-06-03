@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const pool = require('../models/db');
 const { sendPasswordResetEmail } = require('../services/emailService');
 const { validatePassword } = require('../utils/passwordValidator');
+const { logActivity, getClientIp } = require('../utils/activityLogger');
 
 const getAuthCookieOptions = () => ({
   httpOnly: true,
@@ -70,6 +71,7 @@ const login = async (req, res) => {
     );
     
     if (result.rows.length === 0) {
+      await logActivity({ eventType: 'login_failure', ipAddress: getClientIp(req), details: { attempted_username: username } });
       return res.status(401).json({ error: 'Felaktigt användarnamn eller lösenord' });
     }
 
@@ -79,6 +81,7 @@ const login = async (req, res) => {
     const validPassword = await bcrypt.compare(password, user.password);
     
     if (!validPassword) {
+      await logActivity({ eventType: 'login_failure', userId: user.id, username: user.username, ipAddress: getClientIp(req), details: { attempted_username: username } });
       return res.status(401).json({ error: 'Felaktigt användarnamn eller lösenord' });
     }
 
@@ -95,6 +98,8 @@ const login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    await logActivity({ eventType: 'login_success', userId: user.id, username: user.username, ipAddress: getClientIp(req) });
 
     res.cookie('auth_token', token, getAuthCookieOptions());
     setNoStore(res);
@@ -116,6 +121,9 @@ const login = async (req, res) => {
 };
 
 const logout = async (req, res) => {
+  if (req.user) {
+    await logActivity({ eventType: 'logout', userId: req.user.id, username: req.user.username, ipAddress: getClientIp(req) });
+  }
   res.clearCookie('auth_token', {
     ...getAuthCookieOptions(),
     maxAge: undefined

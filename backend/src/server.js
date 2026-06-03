@@ -17,6 +17,7 @@ const mp3TagsRoutes = require('./routes/mp3tags');
 const { startScheduleChecker } = require('./services/scheduleService');
 const { startDbFileSyncCron } = require('./services/dbFileSyncCronService');
 const testUploadRoutes = require('./routes/testupload');
+const logsRoutes = require('./routes/logs');
 const { csrfProtectionMiddleware } = require('./middleware/csrf');
 
 const app = express();
@@ -77,6 +78,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/admin-tools', adminToolsRoutes);
 app.use('/api/upload-links', uploadLinksRoutes);
 app.use('/api/mp3tags', mp3TagsRoutes);
+app.use('/api/logs', logsRoutes);
 if (process.env.ENABLE_TEST_UPLOAD_ROUTE === 'true') {
   app.use('/api', testUploadRoutes);
 }

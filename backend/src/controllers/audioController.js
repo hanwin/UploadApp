@@ -7,6 +7,7 @@ const { writeTags } = require('../services/mp3Tags');
 const { writeCurrentSeq } = require('../utils/currentSeq');
 const { getAudioDurationSeconds } = require('../utils/audioDuration');
 const { getDefaultSeqPathTemplate, getPublicUploadFolderName } = require('./settingsController');
+const { logActivity, getClientIp } = require('../utils/activityLogger');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -252,8 +253,10 @@ const uploadAudio = async (req, res) => {
       message: 'File uploaded successfully',
       file: result.rows[0]
     });
+    await logActivity({ eventType: 'upload_success', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: req.file?.originalname, stored_filename: req.file?.filename, folder: req.body?.folder, file_size: req.file?.size, mime_type: canonicalMimeType } });
   } catch (error) {
     console.error('Upload error:', error);
+    await logActivity({ eventType: 'upload_failure', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: req.file?.originalname, folder: req.body?.folder, error: error.message } });
     res.status(500).json({ error: 'Det gick inte att ladda upp filen' });
   }
 }
@@ -477,6 +480,7 @@ const deleteAudio = async (req, res) => {
     }
 
     res.json({ message: 'File deleted successfully' });
+    await logActivity({ eventType: 'file_delete', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: file.filename, original_name: file.original_name, folder: file.folder } });
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ error: 'Det gick inte att ta bort filen' });
