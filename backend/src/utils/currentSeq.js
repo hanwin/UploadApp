@@ -156,28 +156,38 @@ function removeSeqReferenceForFile(folderPath, filename) {
 
   const content = decodeCp1252(fs.readFileSync(currentSeqPath));
   const lines = content.split(/\r?\n/);
-  let changed = false;
+  const matchedIndexes = new Set();
 
+  lines.forEach((line) => {
+    const fileMatch = line.match(/^\s*file(\d+)\s*=(.*)$/i);
+    if (!fileMatch) {
+      return;
+    }
+
+    const index = Number(fileMatch[1]);
+    const currentValue = String(fileMatch[2] || '').trim();
+    const currentBasename = path.win32.basename(currentValue).toLowerCase().normalize('NFC');
+    if (currentBasename === targetName.normalize('NFC')) {
+      matchedIndexes.add(index);
+    }
+  });
+
+  const changed = matchedIndexes.size > 0;
   const nextLines = lines.map((line) => {
-    if (line.toLowerCase().startsWith('file0=')) {
-      const currentValue = line.slice(line.indexOf('=') + 1).trim();
-      const currentBasename = path.win32.basename(currentValue).toLowerCase();
-      if (currentBasename === targetName) {
-        changed = true;
-        return 'file0=';
+    const fileMatch = line.match(/^\s*file(\d+)\s*=/i);
+    if (fileMatch) {
+      const index = Number(fileMatch[1]);
+      if (matchedIndexes.has(index)) {
+        return `file${index}=`;
       }
     }
 
-    if (line.toLowerCase().startsWith('length0=') && changed) {
-      return 'length0=';
-    }
-
-    if (line.toLowerCase().startsWith('numberofentries=') && changed) {
-      return 'numberofentries=0';
-    }
-
-    if (line.toLowerCase().startsWith('nextindex=') && changed) {
-      return 'nextindex=0';
+    const lengthMatch = line.match(/^\s*length(\d+)\s*=/i);
+    if (lengthMatch) {
+      const index = Number(lengthMatch[1]);
+      if (matchedIndexes.has(index)) {
+        return `length${index}=`;
+      }
     }
 
     return line;
@@ -205,12 +215,16 @@ function clearCurrentSeqFile(folderPath) {
   const lines = content.split(/\r?\n/);
 
   const nextLines = lines.map((line) => {
-    if (line.toLowerCase().startsWith('file0=')) {
-      return 'file0=';
+    const fileMatch = line.match(/^\s*file(\d+)\s*=/i);
+    if (fileMatch) {
+      return `file${fileMatch[1]}=`;
     }
-    if (line.toLowerCase().startsWith('length0=')) {
-      return 'length0=';
+
+    const lengthMatch = line.match(/^\s*length(\d+)\s*=/i);
+    if (lengthMatch) {
+      return `length${lengthMatch[1]}=`;
     }
+
     if (line.toLowerCase().startsWith('numberofentries=')) {
       return 'numberofentries=0';
     }

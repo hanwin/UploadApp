@@ -1,10 +1,24 @@
-export const APP_VERSION = '1.6.2';
+export const APP_VERSION = '1.6.4';
 
 /**
  * Changelog — senaste versionen överst.
  * type: 'new' | 'fix' | 'improve'
  */
 export const CHANGELOG = [
+  {
+    version: '1.6.4',
+    date: '2026-06-08',
+    entries: [
+      { type: 'fix', text: 'Radering tillåts nu för användare med mappbehörighet (inte bara filägare), så filer i tilldelade mappar kan tas bort konsekvent' },
+    ],
+  },
+  {
+    version: '1.6.3',
+    date: '2026-06-08',
+    entries: [
+      { type: 'fix', text: 'Radering uppdaterar nu seq för alla fileN/lengthN-poster (inte bara file0), vilket löser mappar med template som använder flera spellisteplatser' },
+    ],
+  },
   {
     version: '1.6.2',
     date: '2026-06-08',
