@@ -146,12 +146,12 @@ function removeSeqReferenceForFile(folderPath, filename) {
   const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
 
   if (!fs.existsSync(currentSeqPath)) {
-    return;
+    return false;
   }
 
   const targetName = path.win32.basename(String(filename || '')).toLowerCase();
   if (!targetName) {
-    return;
+    return false;
   }
 
   const content = decodeCp1252(fs.readFileSync(currentSeqPath));
@@ -189,6 +189,8 @@ function removeSeqReferenceForFile(folderPath, filename) {
       encodeCp1252Strict(nextLines.join('\n'), `seq ${currentSeqPath}`)
     );
   }
+
+  return changed;
 }
 
 module.exports = {

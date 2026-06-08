@@ -1,10 +1,17 @@
-export const APP_VERSION = '1.6.0';
+export const APP_VERSION = '1.6.1';
 
 /**
  * Changelog — senaste versionen överst.
  * type: 'new' | 'fix' | 'improve'
  */
 export const CHANGELOG = [
+  {
+    version: '1.6.1',
+    date: '2026-06-08',
+    entries: [
+      { type: 'fix', text: 'Radering av ljudfil uppdaterar nu seq korrekt: referensen tas bort och om filer finns kvar i mappen används senaste kvarvarande uppladdning, annars lämnas seq tom' },
+    ],
+  },
   {
     version: '1.6.0',
     date: '2026-06-03',
