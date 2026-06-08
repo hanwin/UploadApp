@@ -348,8 +348,20 @@ const streamAudio = async (req, res) => {
 
     const file = result.rows[0];
 
-    // Check if user owns the file or is admin
-    if (file.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    // Check access: owner, admin/superadmin, or user assigned to the file's folder.
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+    const isOwner = file.user_id === req.user.id;
+    let hasFolderAccess = false;
+
+    if (!isAdmin && !isOwner && file.folder) {
+      const folderAccessResult = await pool.query(
+        'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2 LIMIT 1',
+        [req.user.id, file.folder]
+      );
+      hasFolderAccess = folderAccessResult.rows.length > 0;
+    }
+
+    if (!isAdmin && !isOwner && !hasFolderAccess) {
       return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
@@ -444,8 +456,20 @@ const deleteAudio = async (req, res) => {
 
     const file = result.rows[0];
 
-    // Check if user owns the file or is admin
-    if (file.user_id !== req.user.id && req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+    // Check access: owner, admin/superadmin, or user assigned to the file's folder.
+    const isAdmin = req.user.role === 'admin' || req.user.role === 'superadmin';
+    const isOwner = file.user_id === req.user.id;
+    let hasFolderAccess = false;
+
+    if (!isAdmin && !isOwner && file.folder) {
+      const folderAccessResult = await pool.query(
+        'SELECT 1 FROM user_folders WHERE user_id = $1 AND folder_name = $2 LIMIT 1',
+        [req.user.id, file.folder]
+      );
+      hasFolderAccess = folderAccessResult.rows.length > 0;
+    }
+
+    if (!isAdmin && !isOwner && !hasFolderAccess) {
       return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
