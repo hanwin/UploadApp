@@ -498,37 +498,40 @@ const deleteAudio = async (req, res) => {
     try {
       const uploadsRoot = path.join(__dirname, '../../uploads');
       const folderPath = path.join(uploadsRoot, file.folder || '');
-      const { removeSeqReferenceForFile } = require('../utils/currentSeq');
+      const { removeSeqReferenceForFile, clearCurrentSeqFile } = require('../utils/currentSeq');
       const seqChanged = removeSeqReferenceForFile(folderPath, file.original_name || file.filename);
 
-      if (seqChanged) {
-        const fallbackResult = await pool.query(
-          `SELECT original_name, filename, duration
-             FROM audio_files
-            WHERE folder IS NOT DISTINCT FROM $1
-            ORDER BY uploaded_at DESC, id DESC
-            LIMIT 1`,
-          [file.folder || null]
-        );
+      const fallbackResult = await pool.query(
+        `SELECT original_name, filename, duration
+           FROM audio_files
+          WHERE folder IS NOT DISTINCT FROM $1
+          ORDER BY uploaded_at DESC, id DESC
+          LIMIT 1`,
+        [file.folder || null]
+      );
 
-        const fallbackFile = fallbackResult.rows[0];
-        if (fallbackFile) {
-          let defaultSeqPath;
-          if (file.folder) {
-            const folderDefaultsResult = await pool.query(
-              'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
-              [file.folder]
-            );
-            defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || undefined;
-          }
-
-          writeCurrentSeq(
-            folderPath,
-            fallbackFile.original_name || fallbackFile.filename,
-            fallbackFile.duration,
-            { defaultSeqPath }
+      const fallbackFile = fallbackResult.rows[0];
+      if (fallbackFile && seqChanged) {
+        let defaultSeqPath;
+        if (file.folder) {
+          const folderDefaultsResult = await pool.query(
+            'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
+            [file.folder]
           );
+          defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || undefined;
         }
+
+        writeCurrentSeq(
+          folderPath,
+          fallbackFile.original_name || fallbackFile.filename,
+          fallbackFile.duration,
+          { defaultSeqPath }
+        );
+      }
+
+      if (!fallbackFile) {
+        // If no files remain in folder, seq must be empty.
+        clearCurrentSeqFile(folderPath);
       }
     } catch (seqError) {
       console.error('Failed to update seq after delete:', seqError);

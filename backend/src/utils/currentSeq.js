@@ -193,7 +193,44 @@ function removeSeqReferenceForFile(folderPath, filename) {
   return changed;
 }
 
+function clearCurrentSeqFile(folderPath) {
+  const folderName = path.basename(folderPath);
+  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
+
+  if (!fs.existsSync(currentSeqPath)) {
+    return false;
+  }
+
+  const content = decodeCp1252(fs.readFileSync(currentSeqPath));
+  const lines = content.split(/\r?\n/);
+
+  const nextLines = lines.map((line) => {
+    if (line.toLowerCase().startsWith('file0=')) {
+      return 'file0=';
+    }
+    if (line.toLowerCase().startsWith('length0=')) {
+      return 'length0=';
+    }
+    if (line.toLowerCase().startsWith('numberofentries=')) {
+      return 'numberofentries=0';
+    }
+    if (line.toLowerCase().startsWith('nextindex=')) {
+      return 'nextindex=0';
+    }
+
+    return line;
+  });
+
+  fs.writeFileSync(
+    currentSeqPath,
+    encodeCp1252Strict(nextLines.join('\n'), `seq ${currentSeqPath}`)
+  );
+
+  return true;
+}
+
 module.exports = {
   writeCurrentSeq,
-  removeSeqReferenceForFile
+  removeSeqReferenceForFile,
+  clearCurrentSeqFile
 };

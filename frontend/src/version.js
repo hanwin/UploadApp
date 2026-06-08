@@ -1,10 +1,17 @@
-export const APP_VERSION = '1.6.1';
+export const APP_VERSION = '1.6.2';
 
 /**
  * Changelog — senaste versionen överst.
  * type: 'new' | 'fix' | 'improve'
  */
 export const CHANGELOG = [
+  {
+    version: '1.6.2',
+    date: '2026-06-08',
+    entries: [
+      { type: 'fix', text: 'Seq-filen töms nu alltid när sista filen i en mapp raderas, även om exakt filmatchning i seq missar' },
+    ],
+  },
   {
     version: '1.6.1',
     date: '2026-06-08',
