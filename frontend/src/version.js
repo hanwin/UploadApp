@@ -1,10 +1,89 @@
-export const APP_VERSION = '1.6.4';
+export const APP_VERSION = '1.9.4';
 
 /**
  * Changelog — senaste versionen överst.
  * type: 'new' | 'fix' | 'improve'
  */
 export const CHANGELOG = [
+  {
+    version: '1.9.4',
+    date: '2026-08-18',
+    entries: [
+      { type: 'fix', text: 'Arkivering via delete.sh tömmer nu den matchande fileN- och lengthN-referensen i seq-filen utan att ersätta den med en annan fil' },
+    ],
+  },
+  {
+    version: '1.9.3',
+    date: '2026-08-18',
+    entries: [
+      { type: 'fix', text: 'Legacy-uppladdningar uppdaterar åter seq-filen direkt efter lyckad uppladdning' },
+    ],
+  },
+  {
+    version: '1.9.2',
+    date: '2026-08-18',
+    entries: [
+      { type: 'fix', text: 'Hooklösa legacy-mappar med befintliga ljudfiler får nu automatiskt en seq-fil vid uppstart, utan att en befintlig seq-fil skrivs över' },
+    ],
+  },
+  {
+    version: '1.9.1',
+    date: '2026-08-18',
+    entries: [
+      { type: 'improve', text: 'Legacy-mappar utan upload.sh får nu automatiskt den historiska standardmallen <mapp>-tmpl.tmpl utan att befintliga mallar ändras' },
+    ],
+  },
+  {
+    version: '1.9.0',
+    date: '2026-08-18',
+    entries: [
+      { type: 'new', text: 'Mappar utan upload.sh använder åter legacy-flödet med .tmpl- och .seq-filer; mappar med upload.sh fortsätter använda hookar' },
+    ],
+  },
+  {
+    version: '1.8.0',
+    date: '2026-08-17',
+    entries: [
+      { type: 'new', text: 'Admin och superadmin kan nu redigera upload.sh och delete.sh per mapp direkt från webbgränssnittet' },
+    ],
+  },
+  {
+    version: '1.7.4',
+    date: '2026-08-17',
+    entries: [
+      { type: 'fix', text: 'Uppgraderingar bevarar nu befintliga .seq- och .tmpl-filer samt äldre databasinställningar, som lämnas orörda men inte längre används' },
+    ],
+  },
+  {
+    version: '1.7.3',
+    date: '2026-08-16',
+    entries: [
+      { type: 'improve', text: 'Arkiverade filer behåller nu sitt filnamn och får endast ett löpnummer vid namnkonflikt' },
+    ],
+  },
+  {
+    version: '1.7.2',
+    date: '2026-08-16',
+    entries: [
+      { type: 'improve', text: 'Nya och tomma upload.sh-hookar får nu shebang och kommentarer som beskriver alla AUDIO_*-variabler' },
+    ],
+  },
+  {
+    version: '1.7.1',
+    date: '2026-08-16',
+    entries: [
+      { type: 'fix', text: 'upload.sh körs nu först för den färdigbearbetade MP3-filen, inte för WAV-originalet som väntar på normalisering' },
+    ],
+  },
+  {
+    version: '1.7.0',
+    date: '2026-08-16',
+    entries: [
+      { type: 'new', text: 'Varje ljudmapp har nu egna upload.sh- och delete.sh-hookar som körs vid uppladdning och arkivering' },
+      { type: 'improve', text: 'Filer arkiveras nu i mappens arkiv-katalog i stället för att raderas fysiskt, med återställning om en hook misslyckas' },
+      { type: 'improve', text: 'Tidigare .seq- och .tmpl-generering samt dess inställningar har tagits bort' },
+    ],
+  },
   {
     version: '1.6.4',
     date: '2026-06-08',

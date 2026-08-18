@@ -59,7 +59,7 @@ Som vanlig användare arbetar du främst med dina egna ljudfiler.
 Efter inloggning ser du:
 - ett uppladdningsområde
 - en lista med dina filer
-- knappar för att spela upp, schemalägga och radera filer
+- knappar för att spela upp, schemalägga och arkivera filer
 
 ### Ladda upp en ljudfil
 
@@ -97,12 +97,12 @@ Du kan se olika statusar, till exempel:
 2. Spelaren öppnas.
 3. Stäng spelaren när du är klar.
 
-### Radera en fil
+### Arkivera en fil
 
 1. Klicka på papperskorgen vid filen.
-2. Bekräfta borttagning.
+2. Bekräfta arkivering.
 
-Observera: borttagning är permanent.
+Filen flyttas till mappens `arkiv`-katalog och försvinner från den aktiva fillistan. Kontakta en administratör om en arkiverad fil behöver återställas.
 
 ### Logga ut
 
@@ -128,7 +128,7 @@ Här kan du:
 - se filer från flera användare
 - välja mapp och ladda upp filer dit
 - spela upp filer
-- radera filer vid behov
+- arkivera filer vid behov
 
 ### Flik: Mappar
 
@@ -209,7 +209,7 @@ Du kan bestämma när en uppladdad fil ska bli synlig.
 
 - Använd tydliga filnamn så du lätt hittar rätt fil.
 - Kontrollera datum och tid noga vid schemaläggning.
-- Radera bara filer du säkert inte behöver.
+- Arkivera bara filer du inte längre vill ha i den aktiva listan.
 - Logga ut när du är klar.
 
 ### För administratörer

@@ -30,7 +30,7 @@ const ensureTables = async () => {
     ALTER TABLE folders
     ADD COLUMN IF NOT EXISTS default_mp3_title VARCHAR(255),
     ADD COLUMN IF NOT EXISTS default_mp3_artist VARCHAR(255),
-    ADD COLUMN IF NOT EXISTS default_seq_path VARCHAR(500)
+    ADD COLUMN IF NOT EXISTS default_seq_path VARCHAR(255)
   `);
 
   // Create app settings table for central configuration
@@ -41,14 +41,6 @@ const ensureTables = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
-
-  // Ensure central default seq path setting exists
-  await pool.query(
-    `INSERT INTO app_settings (key, value)
-     VALUES ($1, $2)
-     ON CONFLICT (key) DO NOTHING`,
-    ['default_seq_path_template', '']
-  );
 
   await pool.query(
     `INSERT INTO app_settings (key, value)

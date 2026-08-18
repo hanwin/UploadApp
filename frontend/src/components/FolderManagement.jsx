@@ -20,9 +20,10 @@ import {
   Paper,
   ListItemButton,
   ListItemIcon,
-  Tooltip
+  Tooltip,
+  Alert
 } from '@mui/material';
-import { Delete, Add, Folder, Edit } from '@mui/icons-material';
+import { Delete, Add, Folder, Edit, Code } from '@mui/icons-material';
 import { folderAPI } from '../services/api';
 import ConfirmModal from './ConfirmModal';
 import { useToast } from '../contexts/ToastContext';
@@ -36,8 +37,17 @@ function FolderManagement({ user }) {
   const [newFolderStandardTagTitle, setNewFolderStandardTagTitle] = useState('');
   const [newFolderStandardTagArtist, setNewFolderStandardTagArtist] = useState('');
   const [editDialog, setEditDialog] = useState({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' });
+  const [hookDialog, setHookDialog] = useState({
+    open: false,
+    folder: null,
+    uploadScript: '',
+    deleteScript: '',
+    loading: false,
+    saving: false
+  });
   const [confirmDelete, setConfirmDelete] = useState(null);
   const { success, error: showError } = useToast();
+  const canManageHooks = user?.role === 'admin' || user?.role === 'superadmin';
 
   useEffect(() => {
     loadFolders();
@@ -102,6 +112,59 @@ function FolderManagement({ user }) {
       standardTagTitle: folder.default_mp3_title || '',
       standardTagArtist: folder.default_mp3_artist || ''
     });
+  };
+
+  const closeHookDialog = () => {
+    if (hookDialog.saving) return;
+    setHookDialog({
+      open: false,
+      folder: null,
+      uploadScript: '',
+      deleteScript: '',
+      loading: false,
+      saving: false
+    });
+  };
+
+  const openHookDialog = async (folder) => {
+    setHookDialog({
+      open: true,
+      folder,
+      uploadScript: '',
+      deleteScript: '',
+      loading: true,
+      saving: false
+    });
+
+    try {
+      const response = await folderAPI.getHooks(folder.id);
+      setHookDialog((previous) => ({
+        ...previous,
+        uploadScript: response.data.uploadScript || '',
+        deleteScript: response.data.deleteScript || '',
+        loading: false
+      }));
+    } catch (err) {
+      showError(err.response?.data?.error || 'Kunde inte läsa hook-skripten');
+      closeHookDialog();
+    }
+  };
+
+  const saveHookScripts = async () => {
+    if (!hookDialog.folder) return;
+
+    try {
+      setHookDialog((previous) => ({ ...previous, saving: true }));
+      await folderAPI.updateHooks(hookDialog.folder.id, {
+        uploadScript: hookDialog.uploadScript,
+        deleteScript: hookDialog.deleteScript
+      });
+      success('Hook-skript sparade!');
+      closeHookDialog();
+    } catch (err) {
+      showError(err.response?.data?.error || 'Kunde inte spara hook-skripten');
+      setHookDialog((previous) => ({ ...previous, saving: false }));
+    }
   };
 
   const handleUpdateFolder = async () => {
@@ -217,6 +280,22 @@ function FolderManagement({ user }) {
                       <Edit />
                     </IconButton>
                   </Tooltip>
+                  {canManageHooks && (
+                    <Tooltip title="Redigera hook-skript">
+                      <IconButton
+                        edge="end"
+                        color="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openHookDialog(folder);
+                        }}
+                        aria-label="edit-hook-scripts"
+                        sx={{ ml: 1 }}
+                      >
+                        <Code />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   {(folder.original_name || folder.disk_name) !== 'Standard' && (
                     <IconButton
                       edge="end"
@@ -319,6 +398,57 @@ function FolderManagement({ user }) {
           <Button onClick={() => setEditDialog({ open: false, folder: null, standardTagTitle: '', standardTagArtist: '' })}>Avbryt</Button>
           <Button onClick={handleUpdateFolder} variant="contained">
             Spara
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={hookDialog.open} onClose={closeHookDialog} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Redigera hook-skript - {hookDialog.folder?.original_name || hookDialog.folder?.disk_name}
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ mt: 1, mb: 2 }}>
+            Skripten körs på servern vid uppladdning och arkivering. Spara endast kod du litar på och behåll shebang-raden överst.
+          </Alert>
+          {hookDialog.loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              <TextField
+                label="upload.sh"
+                multiline
+                minRows={12}
+                fullWidth
+                margin="dense"
+                value={hookDialog.uploadScript}
+                onChange={(e) => setHookDialog((previous) => ({ ...previous, uploadScript: e.target.value }))}
+                inputProps={{ spellCheck: false }}
+                InputProps={{ sx: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
+              />
+              <TextField
+                label="delete.sh"
+                multiline
+                minRows={8}
+                fullWidth
+                margin="dense"
+                value={hookDialog.deleteScript}
+                onChange={(e) => setHookDialog((previous) => ({ ...previous, deleteScript: e.target.value }))}
+                inputProps={{ spellCheck: false }}
+                InputProps={{ sx: { fontFamily: 'monospace', fontSize: '0.85rem' } }}
+              />
+            </>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeHookDialog} disabled={hookDialog.saving}>Avbryt</Button>
+          <Button
+            onClick={saveHookScripts}
+            variant="contained"
+            disabled={hookDialog.loading || hookDialog.saving}
+          >
+            {hookDialog.saving ? 'Sparar...' : 'Spara skript'}
           </Button>
         </DialogActions>
       </Dialog>

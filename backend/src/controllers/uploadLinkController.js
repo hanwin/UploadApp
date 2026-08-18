@@ -7,6 +7,17 @@ const {
   getPublicUploadFolderName,
   getPublicUploadFolderDisplayName
 } = require('./settingsController');
+const {
+  archiveFile,
+  ensureFolderAutomation,
+  hasUploadHook,
+  restoreArchivedFile,
+  runUploadHook
+} = require('../services/folderHooks');
+const { logActivity, getClientIp } = require('../utils/activityLogger');
+const { getAudioDurationSeconds } = require('../utils/audioDuration');
+const { writeCurrentSeq } = require('../utils/currentSeq');
+const { getDefaultSeqPathTemplate } = require('./settingsController');
 
 const DEFAULT_FRONTEND_URL = 'http://localhost:81';
 
@@ -38,10 +49,10 @@ async function ensurePublicFolderExists() {
   }
 
   await pool.query(
-    `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path)
-     VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist)
+     VALUES ($1, $2, $3, $4)
      ON CONFLICT (disk_name) DO NOTHING`,
-    [displayName, folderName, null, null, null]
+    [displayName, folderName, null, null]
   );
 
   const uploadsRoot = path.join(__dirname, '../../uploads');
@@ -50,8 +61,10 @@ async function ensurePublicFolderExists() {
     throw new Error('Invalid public upload folder path');
   }
 
-  if (!fs.existsSync(folderPath)) {
+  const folderAlreadyExists = fs.existsSync(folderPath);
+  if (!folderAlreadyExists) {
     fs.mkdirSync(folderPath, { recursive: true });
+    await ensureFolderAutomation(folderName);
   }
 
   return { folderName, displayName, folderPath };
@@ -203,7 +216,11 @@ const handlePublicUpload = async (req, res) => {
 
     if (!canonicalMimeType) {
       if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+        await archiveFile({
+          folderName: link.folder_name,
+          activePath: req.file.path,
+          filename: req.file.filename
+        });
       }
       return res.status(400).json({ error: 'Filtypen stöds inte' });
     }
@@ -225,6 +242,62 @@ const handlePublicUpload = async (req, res) => {
       ]
     );
 
+    const usesHook = await hasUploadHook(link.folder_name);
+    let uploadHook;
+    if (usesHook) try {
+      uploadHook = await runUploadHook({
+        folderName: link.folder_name,
+        fileId: insertResult.rows[0].id,
+        filename: req.file.filename,
+        originalName: decodedOriginalName,
+        activePath: req.file.path,
+        userId: link.created_by_user_id
+      });
+    } catch (hookError) {
+      let archived;
+      try {
+        archived = await archiveFile({
+          folderName: link.folder_name,
+          activePath: req.file.path,
+          filename: req.file.filename
+        });
+        await pool.query('DELETE FROM audio_files WHERE id = $1', [insertResult.rows[0].id]);
+      } catch (rollbackError) {
+        if (archived) {
+          try {
+            await restoreArchivedFile(archived);
+          } catch (restoreError) {
+            rollbackError.restoreError = restoreError.message;
+          }
+        }
+        console.error('Failed to roll back public upload after hook failure:', rollbackError);
+      }
+
+      await logActivity({
+        eventType: 'upload_hook_failure',
+        userId: link.created_by_user_id,
+        ipAddress: getClientIp(req),
+        details: {
+          file_id: insertResult.rows[0].id,
+          filename: decodedOriginalName,
+          folder: link.folder_name,
+          error: hookError.message,
+          archived_path: archived?.archivePath || null,
+          source: 'public_upload_link'
+        }
+      });
+      return res.status(500).json({ error: 'Uppladdningen återställdes eftersom upload.sh misslyckades' });
+    }
+    if (!usesHook) {
+      const duration = await getAudioDurationSeconds(req.file.path);
+      writeCurrentSeq(
+        path.dirname(req.file.path),
+        decodedOriginalName,
+        duration,
+        { defaultSeqPath: await getDefaultSeqPathTemplate() }
+      );
+    }
+
     await pool.query(
       `UPDATE upload_links
        SET use_count = use_count + 1,
@@ -232,6 +305,24 @@ const handlePublicUpload = async (req, res) => {
        WHERE id = $1`,
       [link.id]
     );
+
+    await logActivity({
+      eventType: 'upload_success',
+      userId: link.created_by_user_id,
+      ipAddress: getClientIp(req),
+      details: {
+        file_id: insertResult.rows[0].id,
+        filename: decodedOriginalName,
+        stored_filename: req.file.filename,
+        folder: link.folder_name,
+        file_size: req.file.size,
+        mime_type: canonicalMimeType,
+        hook_stdout: uploadHook?.stdout || null,
+        hook_stderr: uploadHook?.stderr || null,
+        legacy_seq_flow: !usesHook,
+        source: 'public_upload_link'
+      }
+    });
 
     return res.status(201).json({
       message: 'Fil uppladdad',

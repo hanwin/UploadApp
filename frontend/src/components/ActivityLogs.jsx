@@ -24,6 +24,10 @@ const EVENT_LABELS = {
   upload_success: 'Uppladdning OK',
   upload_failure: 'Uppladdning misslyckad',
   file_delete: 'Fil raderad',
+  file_archived: 'Fil arkiverad',
+  file_archive_failure: 'Arkivering misslyckades',
+  upload_hook_failure: 'Uppladdningshook misslyckades',
+  folder_hooks_updated: 'Mappens hook-skript uppdaterades',
 };
 
 const ALL_EVENT_TYPES = Object.keys(EVENT_LABELS);

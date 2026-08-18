@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { ensureFolderAutomation } = require('../src/services/folderHooks');
 
 function generatePassword(length = 16) {
   return crypto.randomBytes(length).toString('base64url').slice(0, length);
@@ -109,6 +110,7 @@ async function createTestData() {
       if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath, { recursive: true });
       }
+      await ensureFolderAutomation(folder.disk_name);
       console.log(`   ✓ ${folder.original_name} → ${folder.disk_name}`);
     }
     

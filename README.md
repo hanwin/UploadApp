@@ -74,6 +74,16 @@ sudo chown -R $(id -u):$(id -g) backend/uploads
 
 Maximal filstorlek för uppladdning är 4 GB. Om du vill ändra gränsen ytterligare, uppdatera både Nginx-konfigurationen och backend/frontend-valideringen.
 
+### Arkiv och mapp-hookar
+
+Varje ljudmapp innehåller tomma, körbara `upload.sh` och `delete.sh` samt underkatalogen `arkiv/`. När en fil laddas upp körs `upload.sh` efter att filen har sparats och registrerats. För en WAV som ska normaliseras körs hooken i stället först när den färdiga MP3-filen har skapats. När en fil arkiveras flyttas den atomiskt till `arkiv/`, tas bort ur den aktiva listan och `delete.sh` körs.
+
+Hookarna körs med ljudmappen som arbetskatalog och måste avslutas med exitkod `0` inom 30 sekunder. De får kontext i miljövariablerna `AUDIO_EVENT`, `AUDIO_FOLDER`, `AUDIO_FILE_ID`, `AUDIO_FILENAME`, `AUDIO_ORIGINAL_NAME`, `AUDIO_ACTIVE_PATH`, `AUDIO_ARCHIVE_PATH` och `AUDIO_USER_ID`. Arkiverade filer behåller sitt filnamn; vid konflikt läggs ett löpnummer till, exempelvis `program (1).mp3`. Vid hook-fel återställs operationen: en uppladdning arkiveras och dess databasrad tas bort, medan en arkivering flyttas tillbaka till den aktiva mappen och behåller sin databasrad.
+
+Admin och superadmin kan redigera en mapps båda hook-skript från **Mappar** via kodikonen. Endast den registrerade mappens `upload.sh` och `delete.sh` kan läsas eller sparas, och varje skript måste börja med en shebang (till exempel `#!/bin/sh`).
+
+Om `upload.sh` saknas i en mapp används i stället det äldre seq/template-flödet: mappens `.tmpl` används för att skriva `<mapp>-seq.seq`, och schemalagda filer skrivs till `scheduled.seq`. Att skapa eller spara `upload.sh` växlar mappen till hookflödet.
+
 ## Vanliga kommandon
 
 ```bash
@@ -101,7 +111,7 @@ Se [DEPLOYMENT.md](DEPLOYMENT.md) för fullständiga instruktioner med nginx rev
 | POST | `/api/auth/forgot-password` | Återställ lösenord |
 | POST | `/api/audio/upload?folder=X` | Ladda upp fil |
 | GET | `/api/audio/my-files` | Mina filer |
-| DELETE | `/api/audio/:id` | Radera fil |
+| DELETE | `/api/audio/:id` | Arkivera fil |
 | GET | `/api/folders` | Lista mappar |
 | POST | `/api/folders` | Skapa mapp |
 | GET | `/api/users` | Lista användare (admin) |

@@ -246,9 +246,9 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
     try {
       await audioAPI.delete(confirmDelete.id);
       setFiles(files.filter(f => f.id !== confirmDelete.id));
-      success(`"${confirmDelete.original_name}" borttagen!`);
+      success(`"${confirmDelete.original_name}" arkiverad!`);
     } catch (err) {
-      showError('Kunde inte ta bort filen');
+      showError('Kunde inte arkivera filen');
     } finally {
       setConfirmDelete(null);
     }
@@ -522,7 +522,7 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
                     <IconButton
                       color="error"
                       onClick={() => setConfirmDelete(file)}
-                      aria-label="delete"
+                      aria-label="archive"
                     >
                       <Delete />
                     </IconButton>
@@ -543,8 +543,8 @@ function AudioList({ user, refreshTrigger, onUploadSuccess, impersonatedUserId }
           isOpen={!!confirmDelete}
           onClose={() => setConfirmDelete(null)}
           onConfirm={handleDelete}
-          message={`Är du säker på att du vill ta bort "${confirmDelete?.original_name}"?`}
-          title="Ta bort fil"
+          message={`Är du säker på att du vill arkivera "${confirmDelete?.original_name}"? Filen flyttas till mappens arkiv.`}
+          title="Arkivera fil"
         />
 
         <ScheduleDialog

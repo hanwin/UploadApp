@@ -132,6 +132,33 @@ curl https://yourdomain.com/api/health
 
 ## Migrera från befintlig installation
 
+### Uppgradera på samma server
+
+En vanlig uppgradering behåller databasen, ljudfilerna och befintliga `.seq`/`.tmpl`-filer. De äldre sekvensfilerna används inte av version 1.7+, men lämnas orörda som historik och för återställning. Äldre databasfält och inställningar lämnas också kvar, men används inte längre av appen.
+
+1. Ta en backup innan uppgraderingen:
+
+```bash
+docker compose exec -T postgres pg_dump -U audiouser audiodb | gzip > db_backup_$(date +%F).sql.gz
+tar -czf uploads_backup_$(date +%F).tar.gz backend/uploads/
+```
+
+2. Uppdatera koden och bygg om utan att ta bort volymer:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+3. Kontrollera att tjänsterna är friska:
+
+```bash
+docker compose ps
+curl https://yourdomain.com/api/health
+```
+
+Kör **inte** `docker compose down -v` eller testdata-resetet vid uppgradering, eftersom de raderar databasen respektive testlagringen.
+
 ### Backup på gamla servern
 
 ```bash

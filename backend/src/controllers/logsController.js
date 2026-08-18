@@ -6,7 +6,11 @@ const EVENT_TYPE_LABELS = {
   logout: 'Utloggning',
   upload_success: 'Uppladdning lyckades',
   upload_failure: 'Uppladdning misslyckades',
-  file_delete: 'Fil raderad'
+  file_delete: 'Fil raderad',
+  file_archived: 'Fil arkiverad',
+  file_archive_failure: 'Arkivering misslyckades',
+  upload_hook_failure: 'Uppladdningshook misslyckades',
+  folder_hooks_updated: 'Mappens hook-skript uppdaterades'
 };
 
 const getLogs = async (req, res) => {

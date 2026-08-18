@@ -104,6 +104,8 @@ export const folderAPI = {
   getAll: () => api.get('/folders'),
   create: (data) => api.post('/folders', data),
   update: (id, data) => api.put(`/folders/${id}`, data),
+  getHooks: (id) => api.get(`/folders/${id}/hooks`),
+  updateHooks: (id, data) => api.put(`/folders/${id}/hooks`, data),
   delete: (id) => api.delete(`/folders/${id}`),
 };
 

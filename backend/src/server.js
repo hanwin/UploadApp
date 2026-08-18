@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const cors = require('cors');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -14,9 +16,11 @@ const settingsRoutes = require('./routes/settings');
 const adminToolsRoutes = require('./routes/adminTools');
 const uploadLinksRoutes = require('./routes/uploadLinks');
 const mp3TagsRoutes = require('./routes/mp3tags');
-const { startScheduleChecker } = require('./services/scheduleService');
 const { startDbFileSyncCron } = require('./services/dbFileSyncCronService');
-const testUploadRoutes = require('./routes/testupload');
+const { startScheduleChecker } = require('./services/scheduleService');
+const { ensureLegacyTemplate, getUploadsRoot, hasUploadHook } = require('./services/folderHooks');
+const { writeCurrentSeq } = require('./utils/currentSeq');
+const { getDefaultSeqPathTemplate } = require('./controllers/settingsController');
 const logsRoutes = require('./routes/logs');
 const { csrfProtectionMiddleware } = require('./middleware/csrf');
 
@@ -79,9 +83,6 @@ app.use('/api/admin-tools', adminToolsRoutes);
 app.use('/api/upload-links', uploadLinksRoutes);
 app.use('/api/mp3tags', mp3TagsRoutes);
 app.use('/api/logs', logsRoutes);
-if (process.env.ENABLE_TEST_UPLOAD_ROUTE === 'true') {
-  app.use('/api', testUploadRoutes);
-}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -123,7 +124,30 @@ pool.query('SELECT NOW()')
     // Ensure all tables exist and superadmin is created
     await ensureTables();
     await ensureSuperadmin();
-    
+    const folders = await pool.query('SELECT disk_name FROM folders');
+    await Promise.all(folders.rows.map(async ({ disk_name: folderName }) => {
+      if (!(await hasUploadHook(folderName))) {
+        await ensureLegacyTemplate(folderName);
+        const folderPath = path.join(getUploadsRoot(), folderName);
+        const sequencePath = path.join(folderPath, `${folderName}-seq.seq`);
+        if (!fs.existsSync(sequencePath)) {
+          const fileResult = await pool.query(
+            `SELECT original_name, filename, duration FROM audio_files
+             WHERE folder = $1 ORDER BY uploaded_at DESC, id DESC LIMIT 1`,
+            [folderName]
+          );
+          const file = fileResult.rows[0];
+          if (file) {
+            writeCurrentSeq(
+              folderPath,
+              file.original_name || file.filename,
+              file.duration,
+              { defaultSeqPath: await getDefaultSeqPathTemplate() }
+            );
+          }
+        }
+      }
+    }));
     httpServer.listen(PORT, () => {
       // Disable request timeout for large file uploads (Node.js 18 default is 300s)
       httpServer.requestTimeout = 0;
@@ -133,11 +157,9 @@ pool.query('SELECT NOW()')
       console.log(`✓ Server running on port ${PORT}`);
       console.log('✓ WebSocket server ready');
       
-      // Start schedule checker
-      startScheduleChecker();
-
       // Start DB/filesystem sync cron
       startDbFileSyncCron();
+      startScheduleChecker();
     });
   })
   .catch((err) => {

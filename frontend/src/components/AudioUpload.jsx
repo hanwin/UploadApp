@@ -22,7 +22,6 @@ import { useToast } from '../contexts/ToastContext';
 
 function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId }) {
   const [fileExistsDialog, setFileExistsDialog] = useState({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
-  const [overwrite, setOverwrite] = useState(false);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -52,7 +51,7 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
     return null;
   };
 
-  const validateAndUpload = async (selectedFile, shouldProcess, shouldDeleteOriginal, overwriteFile = false, customName = null) => {
+  const validateAndUpload = async (selectedFile, shouldProcess, shouldDeleteOriginal, customName = null) => {
     if (!selectedFile) return;
 
     const validTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 'audio/x-wav'];
@@ -115,12 +114,11 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
             setUploadProgress(percent);
           }
         },
-        headers: overwriteFile ? { 'X-Overwrite': 'true' } : {},
       });
 
       if (shouldProcess && uploadFile.name.toLowerCase().endsWith('.wav')) {
         if (shouldDeleteOriginal) {
-          success('Fil uppladdad! Processningen startar. Original raderas efter lyckad processning.');
+          success('Fil uppladdad! Processningen startar. Originalet arkiveras efter lyckad processning.');
         } else {
           success('Fil uppladdad! Processningen startar i bakgrunden.');
         }
@@ -164,18 +162,11 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
   };
 
   // Handle overwrite or rename dialog actions (must be top-level for Dialog)
-  const handleFileExistsOverwrite = () => {
-    const { file: existingFile, shouldProcess, shouldDeleteOriginal } = fileExistsDialog;
-    setFileExistsDialog({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
-    // Retry upload with overwrite header
-    validateAndUpload(existingFile, shouldProcess, shouldDeleteOriginal, true);
-  };
-
   const handleFileExistsRename = (newName) => {
     const { file: existingFile, shouldProcess, shouldDeleteOriginal } = fileExistsDialog;
     setFileExistsDialog({ open: false, file: null, shouldProcess: false, shouldDeleteOriginal: false });
     // Retry upload with new name
-    validateAndUpload(existingFile, shouldProcess, shouldDeleteOriginal, false, newName);
+    validateAndUpload(existingFile, shouldProcess, shouldDeleteOriginal, newName);
   };
 
   const handleFileExistsCancel = () => {
@@ -283,9 +274,8 @@ function AudioUpload({ onUploadSuccess, user, selectedFolder, impersonatedUserId
       <Dialog open={fileExistsDialog.open} onClose={handleFileExistsCancel}>
         <DialogTitle>Filen finns redan</DialogTitle>
         <DialogContent>
-          <Typography>En fil med samma namn finns redan i mappen. Vill du skriva över den gamla eller byta namn?</Typography>
+          <Typography>En fil med samma namn finns redan i mappen. Arkivera den befintliga filen först eller välj ett nytt namn.</Typography>
           <Box mt={2}>
-            <Button variant="contained" color="primary" onClick={handleFileExistsOverwrite} sx={{ mr: 2 }}>Skriv över</Button>
             <RenameFileInputDialog onRename={handleFileExistsRename} originalName={fileExistsDialog.file?.name} />
           </Box>
         </DialogContent>

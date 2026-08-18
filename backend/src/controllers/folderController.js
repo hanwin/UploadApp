@@ -1,6 +1,12 @@
 const pool = require('../models/db');
 const fs = require('fs');
 const path = require('path');
+const {
+  ensureFolderAutomation,
+  readFolderHooks,
+  updateFolderHooks
+} = require('../services/folderHooks');
+const { getClientIp, logActivity } = require('../utils/activityLogger');
 
 // Get all folders
 const getAllFolders = async (req, res) => {
@@ -38,6 +44,7 @@ const createFolder = async (req, res) => {
     if (!fs.existsSync(folderPath)) {
       fs.mkdirSync(folderPath, { recursive: true });
     }
+    await ensureFolderAutomation(safeFolderName);
     const incomingTitle = standardTagTitle !== undefined ? standardTagTitle : defaultMp3Title;
     const incomingArtist = standardTagArtist !== undefined ? standardTagArtist : defaultMp3Artist;
     const normalizedTitle = typeof incomingTitle === 'string' ? incomingTitle.trim() : null;
@@ -45,9 +52,9 @@ const createFolder = async (req, res) => {
 
     // Create database entry (save both original and normalized names)
     const result = await pool.query(
-      `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [trimmedName, safeFolderName, normalizedTitle || null, normalizedArtist || null, null]
+      `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [trimmedName, safeFolderName, normalizedTitle || null, normalizedArtist || null]
     );
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -96,8 +103,60 @@ const updateFolder = async (req, res) => {
   }
 };
 
+const getFolderHooks = async (req, res) => {
+  try {
+    const folderResult = await pool.query(
+      'SELECT id, disk_name FROM folders WHERE id = $1 LIMIT 1',
+      [req.params.id]
+    );
+    if (folderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Mappen hittades inte' });
+    }
+
+    const hooks = await readFolderHooks(folderResult.rows[0].disk_name);
+    return res.json(hooks);
+  } catch (error) {
+    console.error('Get folder hooks error:', error);
+    return res.status(500).json({ error: 'Det gick inte att läsa hook-skripten' });
+  }
+};
+
+const updateFolderHookScripts = async (req, res) => {
+  try {
+    const folderResult = await pool.query(
+      'SELECT id, disk_name FROM folders WHERE id = $1 LIMIT 1',
+      [req.params.id]
+    );
+    if (folderResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Mappen hittades inte' });
+    }
+
+    await updateFolderHooks({
+      folderName: folderResult.rows[0].disk_name,
+      uploadScript: req.body?.uploadScript,
+      deleteScript: req.body?.deleteScript
+    });
+
+    await logActivity({
+      eventType: 'folder_hooks_updated',
+      userId: req.user.id,
+      username: req.user.username,
+      ipAddress: getClientIp(req),
+      details: { folder_id: folderResult.rows[0].id, folder: folderResult.rows[0].disk_name }
+    });
+    return res.json({ message: 'Hook-skript sparade' });
+  } catch (error) {
+    console.error('Update folder hooks error:', error);
+    const isValidationError = /must be text|size limit|must start with a shebang/.test(error.message);
+    return res.status(isValidationError ? 400 : 500).json({
+      error: isValidationError ? error.message : 'Det gick inte att spara hook-skripten'
+    });
+  }
+};
+
 // Delete folder (admin only)
 const deleteFolder = async (req, res) => {
+  let client;
   try {
     const { id } = req.params;
 
@@ -122,21 +181,56 @@ const deleteFolder = async (req, res) => {
     if (folderDiskName === normalizeFolderName('Standard')) {
       return res.status(400).json({ error: 'Det går inte att ta bort standardmappen' });
     }
-    // Delete from database
-    await pool.query('DELETE FROM folders WHERE id = $1', [id]);
-    // Delete physical folder if exists
+
     const uploadsDir = path.join(__dirname, '../../uploads');
     const folderPath = path.join(uploadsDir, folderDiskName);
+    if (!folderPath.startsWith(`${uploadsDir}${path.sep}`)) {
+      return res.status(400).json({ error: 'Ogiltig mappsökväg' });
+    }
+
     if (fs.existsSync(folderPath)) {
-      // Only remove if empty
-      if (fs.readdirSync(folderPath).length === 0) {
+      const archivePath = path.join(folderPath, 'arkiv');
+      if (fs.existsSync(archivePath) && fs.readdirSync(archivePath).length > 0) {
+        return res.status(400).json({ error: 'Det går inte att ta bort en mapp som innehåller arkiverade filer' });
+      }
+
+      const remainingEntries = fs.readdirSync(folderPath)
+        .filter((entry) => !['upload.sh', 'delete.sh', 'arkiv'].includes(entry));
+      if (remainingEntries.length > 0) {
+        return res.status(400).json({ error: 'Det går inte att ta bort en mapp som innehåller filer' });
+      }
+    }
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+    try {
+      await client.query('DELETE FROM folders WHERE id = $1', [id]);
+
+      if (fs.existsSync(folderPath)) {
+        for (const entry of ['upload.sh', 'delete.sh']) {
+          const entryPath = path.join(folderPath, entry);
+          if (fs.existsSync(entryPath)) {
+            fs.unlinkSync(entryPath);
+          }
+        }
+        const archivePath = path.join(folderPath, 'arkiv');
+        if (fs.existsSync(archivePath)) {
+          fs.rmdirSync(archivePath);
+        }
         fs.rmdirSync(folderPath);
       }
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
     }
     res.json({ message: 'Folder deleted successfully' });
   } catch (error) {
     console.error('Delete folder error:', error);
     res.status(500).json({ error: 'Det gick inte att ta bort mappen' });
+  } finally {
+    client?.release();
   }
 };
 
@@ -144,5 +238,7 @@ module.exports = {
   getAllFolders,
   createFolder,
   updateFolder,
+  getFolderHooks,
+  updateFolderHookScripts,
   deleteFolder
 };

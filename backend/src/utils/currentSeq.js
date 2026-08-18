@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const { encodeCp1252Strict, decodeCp1252 } = require('./cp1252');
+const { decodeCp1252, encodeCp1252Strict } = require('./cp1252');
 
-const DEFAULT_CURRENT_TEMPLATE = [
+const DEFAULT_TEMPLATE = [
   '[playlist]',
   'file0=Y:\\audio_upload\\{foldername}\\{filename}',
   'length0={length}',
@@ -11,240 +11,89 @@ const DEFAULT_CURRENT_TEMPLATE = [
   ''
 ].join('\n');
 
-function formatAudioLength(durationSeconds) {
-  if (!Number.isFinite(durationSeconds)) {
-    return '';
+function templatePath(folderPath) {
+  const name = path.basename(folderPath);
+  return [
+    path.join(folderPath, `${name}-tmpl.tmpl`),
+    path.join(folderPath, `${name}.tmpl`),
+    path.join(folderPath, 'current.tmpl')
+  ].find(fs.existsSync) || path.join(folderPath, `${name}-tmpl.tmpl`);
+}
+
+function ensureCurrentSeqTemplate(folderPath) {
+  const selectedTemplate = templatePath(folderPath);
+  if (!fs.existsSync(selectedTemplate)) {
+    fs.writeFileSync(selectedTemplate, encodeCp1252Strict(DEFAULT_TEMPLATE, selectedTemplate));
   }
-
-  return String(Math.max(0, Math.round(durationSeconds * 1000)));
+  return selectedTemplate;
 }
 
-function normalizePathSeparators(value) {
-  const input = String(value || '');
-  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
-  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
-  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
-
-  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
+function normaliseSeparators(value) {
+  return String(value || '').replace(/[\\/]{2,}/g, (match) => match[0]);
 }
 
-function stripTrailingFilenamePlaceholder(value) {
-  return String(value || '').replace(/[\\/]?\{filename[\}\]]\s*$/i, '');
+function filenameForSeq(filename, folderName, defaultSeqPath) {
+  const clean = String(filename || '').trim();
+  if (!defaultSeqPath) return clean;
+  const base = String(defaultSeqPath).replace(/[\\/]?\{filename\}\s*$/i, '').trim();
+  const folder = base
+    .replace(/\{foldername\}/gi, folderName)
+    .replace(/\{folder\}/gi, folderName);
+  return normaliseSeparators(`${folder.replace(/[\\/]+$/, '')}${folder.includes('\\') ? '\\' : '/'}${clean}`);
 }
 
-function replaceFolderPlaceholders(value, folderName) {
-  return String(value || '')
-    .replace(/\{foldername[\}\]]/gi, folderName)
-    .replace(/\{folder[\}\]]/gi, folderName);
-}
-
-function replaceFilenamePlaceholders(value, filename) {
-  return String(value || '').replace(/\{filename[\}\]]/gi, filename);
-}
-
-function getTemplatePath(folderPath) {
+function writeCurrentSeq(folderPath, filename, durationSeconds, { defaultSeqPath } = {}) {
   const folderName = path.basename(folderPath);
-  const namedTemplatePath = path.join(folderPath, `${folderName}-tmpl.tmpl`);
-  const legacyTemplatePath = path.join(folderPath, 'current.tmpl');
-  const oldNamedTemplatePath = path.join(folderPath, `${folderName}.tmpl`);
-
-  if (fs.existsSync(namedTemplatePath)) {
-    return namedTemplatePath;
-  }
-  if (fs.existsSync(oldNamedTemplatePath)) {
-    return oldNamedTemplatePath;
-  }
-  if (fs.existsSync(legacyTemplatePath)) {
-    return legacyTemplatePath;
-  }
-
-  fs.writeFileSync(
-    namedTemplatePath,
-    encodeCp1252Strict(DEFAULT_CURRENT_TEMPLATE, `template ${namedTemplatePath}`)
-  );
-  return namedTemplatePath;
-}
-
-function buildCurrentSeqContent(folderPath, filename, durationSeconds) {
-  const templatePath = getTemplatePath(folderPath);
-  const template = decodeCp1252(fs.readFileSync(templatePath));
-  const formattedLength = formatAudioLength(durationSeconds);
-  const folderName = path.basename(folderPath);
-  const filenameAsString = String(filename || '');
-  const lines = template.split(/\r?\n/);
-  const resolvedLines = lines.map((line) => {
-    const lineWithFolder = replaceFolderPlaceholders(line, folderName);
-
-    if (!/^\s*file\d+\s*=/i.test(lineWithFolder)) {
-      return replaceFilenamePlaceholders(lineWithFolder, filenameAsString);
-    }
-
-    const separatorIndex = lineWithFolder.indexOf('=');
-    const key = lineWithFolder.slice(0, separatorIndex).trim();
-    const value = lineWithFolder.slice(separatorIndex + 1);
-    const hasFolderPlaceholders = /\{foldername[\}\]]|\{folder[\}\]]/i.test(line);
-    const filenameHasPath = /[\\/]/.test(filenameAsString);
-    const normalizedFilename = filenameAsString.replace(/\\\\/g, '\\');
-    const filenameValue = (hasFolderPlaceholders && filenameHasPath)
-      ? path.win32.basename(normalizedFilename)
-      : normalizedFilename;
-
-    const resolvedValue = replaceFilenamePlaceholders(value, filenameValue);
-
-    return `${key}=${normalizePathSeparators(resolvedValue)}`;
-  });
-
-  return resolvedLines.join('\n').replace(/\{length\}/gi, formattedLength);
-}
-
-function resolveSeqFilenameValue(filename, folderName, defaultSeqPath) {
-  const cleanFilename = String(filename || '').trim();
-  if (!defaultSeqPath || typeof defaultSeqPath !== 'string' || !defaultSeqPath.trim()) {
-    return cleanFilename;
-  }
-
-  const sanitizedDefaultSeqPath = stripTrailingFilenamePlaceholder(defaultSeqPath);
-
-  const resolved = sanitizedDefaultSeqPath
-    .trim()
-    .replace(/\{foldername[\}\]]/gi, folderName)
-    .replace(/\{folder[\}\]]/gi, folderName)
-    .replace(/\{filename[\}\]]/gi, cleanFilename);
-
-  if (/\{filename[\}\]]/i.test(sanitizedDefaultSeqPath)) {
-    return normalizePathSeparators(resolved);
-  }
-
-  const separator = resolved.includes('\\') ? '\\' : '/';
-  return normalizePathSeparators(`${resolved.replace(/[\\/]+$/, '')}${separator}${cleanFilename}`);
-}
-
-function writeCurrentSeq(folderPath, filename, durationSeconds, options = {}) {
-  const folderName = path.basename(folderPath);
-  const legacyCurrentSeqPath = path.join(folderPath, 'current.seq');
-  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
-  const seqFilenameValue = resolveSeqFilenameValue(filename, folderName, options.defaultSeqPath);
-  const content = buildCurrentSeqContent(folderPath, seqFilenameValue, durationSeconds);
-
-  fs.writeFileSync(
-    currentSeqPath,
-    encodeCp1252Strict(content, `seq ${currentSeqPath}`)
-  );
-
-  // Remove legacy current.seq and .seq.seq so only the new file name is used.
-  if (fs.existsSync(legacyCurrentSeqPath)) {
-    fs.unlinkSync(legacyCurrentSeqPath);
-  }
-  const oldSeqSeq = path.join(folderPath, `${folderName}.seq.seq`);
-  if (fs.existsSync(oldSeqSeq)) {
-    fs.unlinkSync(oldSeqSeq);
-  }
+  const selectedTemplate = ensureCurrentSeqTemplate(folderPath);
+  const sequenceFilename = filenameForSeq(filename, folderName, defaultSeqPath);
+  const length = Number.isFinite(durationSeconds) ? String(Math.max(0, Math.round(durationSeconds * 1000))) : '';
+  const content = decodeCp1252(fs.readFileSync(selectedTemplate))
+    .split(/\r?\n/)
+    .map((line) => line
+      .replace(/\{foldername\}/gi, folderName)
+      .replace(/\{folder\}/gi, folderName)
+      .replace(/\{filename\}/gi, sequenceFilename)
+      .replace(/\{length\}/gi, length))
+    .join('\n');
+  const seqPath = path.join(folderPath, `${folderName}-seq.seq`);
+  fs.writeFileSync(seqPath, encodeCp1252Strict(content, seqPath));
 }
 
 function removeSeqReferenceForFile(folderPath, filename) {
-  const folderName = path.basename(folderPath);
-  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
-
-  if (!fs.existsSync(currentSeqPath)) {
-    return false;
-  }
-
-  const targetName = path.win32.basename(String(filename || '')).toLowerCase();
-  if (!targetName) {
-    return false;
-  }
-
-  const content = decodeCp1252(fs.readFileSync(currentSeqPath));
-  const lines = content.split(/\r?\n/);
-  const matchedIndexes = new Set();
-
-  lines.forEach((line) => {
-    const fileMatch = line.match(/^\s*file(\d+)\s*=(.*)$/i);
-    if (!fileMatch) {
-      return;
-    }
-
-    const index = Number(fileMatch[1]);
-    const currentValue = String(fileMatch[2] || '').trim();
-    const currentBasename = path.win32.basename(currentValue).toLowerCase().normalize('NFC');
-    if (currentBasename === targetName.normalize('NFC')) {
-      matchedIndexes.add(index);
-    }
+  const seqPath = path.join(folderPath, `${path.basename(folderPath)}-seq.seq`);
+  if (!fs.existsSync(seqPath)) return false;
+  const target = path.win32.basename(String(filename || '')).toLowerCase();
+  const lines = decodeCp1252(fs.readFileSync(seqPath)).split(/\r?\n/);
+  const indexes = new Set(lines
+    .map((line) => line.match(/^\s*file(\d+)\s*=(.*)$/i))
+    .filter(Boolean)
+    .filter((match) => path.win32.basename(match[2].trim()).toLowerCase() === target)
+    .map((match) => match[1]));
+  if (!indexes.size) return false;
+  const next = lines.map((line) => {
+    const match = line.match(/^\s*(file|length)(\d+)\s*=/i);
+    return match && indexes.has(match[2]) ? `${match[1]}${match[2]}=` : line;
   });
-
-  const changed = matchedIndexes.size > 0;
-  const nextLines = lines.map((line) => {
-    const fileMatch = line.match(/^\s*file(\d+)\s*=/i);
-    if (fileMatch) {
-      const index = Number(fileMatch[1]);
-      if (matchedIndexes.has(index)) {
-        return `file${index}=`;
-      }
-    }
-
-    const lengthMatch = line.match(/^\s*length(\d+)\s*=/i);
-    if (lengthMatch) {
-      const index = Number(lengthMatch[1]);
-      if (matchedIndexes.has(index)) {
-        return `length${index}=`;
-      }
-    }
-
-    return line;
-  });
-
-  if (changed) {
-    fs.writeFileSync(
-      currentSeqPath,
-      encodeCp1252Strict(nextLines.join('\n'), `seq ${currentSeqPath}`)
-    );
-  }
-
-  return changed;
+  fs.writeFileSync(seqPath, encodeCp1252Strict(next.join('\n'), seqPath));
+  return true;
 }
 
 function clearCurrentSeqFile(folderPath) {
-  const folderName = path.basename(folderPath);
-  const currentSeqPath = path.join(folderPath, `${folderName}-seq.seq`);
-
-  if (!fs.existsSync(currentSeqPath)) {
-    return false;
-  }
-
-  const content = decodeCp1252(fs.readFileSync(currentSeqPath));
-  const lines = content.split(/\r?\n/);
-
-  const nextLines = lines.map((line) => {
-    const fileMatch = line.match(/^\s*file(\d+)\s*=/i);
-    if (fileMatch) {
-      return `file${fileMatch[1]}=`;
-    }
-
-    const lengthMatch = line.match(/^\s*length(\d+)\s*=/i);
-    if (lengthMatch) {
-      return `length${lengthMatch[1]}=`;
-    }
-
-    if (line.toLowerCase().startsWith('numberofentries=')) {
-      return 'numberofentries=0';
-    }
-    if (line.toLowerCase().startsWith('nextindex=')) {
-      return 'nextindex=0';
-    }
-
+  const seqPath = path.join(folderPath, `${path.basename(folderPath)}-seq.seq`);
+  if (!fs.existsSync(seqPath)) return false;
+  const next = decodeCp1252(fs.readFileSync(seqPath)).split(/\r?\n/).map((line) => {
+    if (/^\s*(file|length)\d+\s*=/i.test(line)) return `${line.split('=')[0]}=`;
+    if (/^\s*numberofentries=/i.test(line)) return 'numberofentries=0';
+    if (/^\s*nextindex=/i.test(line)) return 'nextindex=0';
     return line;
   });
-
-  fs.writeFileSync(
-    currentSeqPath,
-    encodeCp1252Strict(nextLines.join('\n'), `seq ${currentSeqPath}`)
-  );
-
+  fs.writeFileSync(seqPath, encodeCp1252Strict(next.join('\n'), seqPath));
   return true;
 }
 
 module.exports = {
   writeCurrentSeq,
   removeSeqReferenceForFile,
-  clearCurrentSeqFile
+  clearCurrentSeqFile,
+  ensureCurrentSeqTemplate
 };

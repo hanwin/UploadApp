@@ -4,10 +4,17 @@ const fs = require('fs');
 const { processAudioInBackground } = require('../services/audioProcessor');
 const { getCanonicalAudioMimeType } = require('../utils/audioMime');
 const { writeTags } = require('../services/mp3Tags');
-const { writeCurrentSeq } = require('../utils/currentSeq');
-const { getAudioDurationSeconds } = require('../utils/audioDuration');
-const { getDefaultSeqPathTemplate, getPublicUploadFolderName } = require('./settingsController');
 const { logActivity, getClientIp } = require('../utils/activityLogger');
+const {
+  archiveAndRunDeleteHook,
+  archiveFile,
+  hasUploadHook,
+  restoreArchivedFile,
+  runUploadHook
+} = require('../services/folderHooks');
+const { getAudioDurationSeconds } = require('../utils/audioDuration');
+const { writeCurrentSeq, removeSeqReferenceForFile, clearCurrentSeqFile } = require('../utils/currentSeq');
+const { getDefaultSeqPathTemplate } = require('./settingsController');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -20,36 +27,26 @@ const applyTagTemplate = (template, context) => {
     .trim();
 };
 
-const isCp1252EncodingError = (error) => error && error.code === 'CP1252_ENCODING_ERROR';
-
 // Upload audio file
 const uploadAudio = async (req, res) => {
   try {
-    fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: called, user=' + (req.user && req.user.id) + ', role=' + (req.user && req.user.role) + '\n');
     if (!req.file) {
-      fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: no file in req.file\n');
       return res.status(400).json({ error: 'Ingen fil uppladdad' });
     }
 
-    fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: file received, originalname=' + req.file.originalname + ', filename=' + req.file.filename + ', mimetype=' + req.file.mimetype + ', size=' + req.file.size + '\n');
-
     const { filename, originalname, size, path: filePath } = req.file;
-    const overwriteRequested = req.headers['x-overwrite'] === 'true';
     const shouldProcess = req.body.processAudio === 'true'; // Check if processing requested
     const deleteOriginal = req.body.deleteOriginal === 'true'; // Check if original should be deleted
     
     // Admin can choose folder, regular users use their assigned folders
     let folder;
     if (req.user.role === 'admin' || req.user.role === 'superadmin') {
-      fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: admin/superadmin upload, query.folder=' + req.query.folder + ', body.folder=' + req.body.folder + '\n');
       // Folder comes from query parameter (since req.body is not reliably populated by multer at this point)
       folder = req.query.folder || req.body.folder;
       if (!folder) {
-        fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: missing folder for admin/superadmin\n');
         return res.status(400).json({ error: 'Mapp krävs' });
       }
     } else {
-      fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: user upload, query.folder=' + req.query.folder + '\n');
       // Get user's assigned folders from user_folders table
       folder = req.query.folder;
       if (folder) {
@@ -83,14 +80,12 @@ const uploadAudio = async (req, res) => {
         folder = userFolders.rows[0]?.folder_name;
       }
       if (!folder) {
-        fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: no folder assigned to user\n');
         return res.status(400).json({ error: 'Ingen mapp tilldelad till användaren' });
       }
-      fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' uploadAudio: saving file info to DB, folder=' + folder + ', filePath=' + filePath + '\n');
     }
 
     const folderCheck = await pool.query(
-      'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
+      'SELECT original_name, disk_name, default_mp3_title, default_mp3_artist FROM folders WHERE disk_name = $1 LIMIT 1',
       [folder]
     );
     if (folderCheck.rows.length === 0) {
@@ -110,7 +105,8 @@ const uploadAudio = async (req, res) => {
     const dbFolder = folder;
 
     // Determine initial processing status
-    const processingStatus = shouldProcess && canonicalMimeType === 'audio/wav' ? 'pending' : 'none';
+    const isWavProcessing = shouldProcess && canonicalMimeType === 'audio/wav';
+    const processingStatus = isWavProcessing ? 'pending' : 'none';
 
     // Determine which user should own this file
     let effectiveUserId;
@@ -162,14 +158,6 @@ const uploadAudio = async (req, res) => {
 
     const fileId = result.rows[0].id;
 
-    // If this upload overwrote an existing file on disk, remove stale DB rows for the same path.
-    if (overwriteRequested) {
-      await pool.query(
-        'DELETE FROM audio_files WHERE id <> $1 AND file_path = $2',
-        [fileId, filePath]
-      );
-    }
-
     // Auto-populate MP3 tags: title = filename (without extension), artist = full folder name.
     if (canonicalMimeType === 'audio/mpeg') {
       const fullFolderName = folderMeta.original_name || folderMeta.disk_name || dbFolder;
@@ -197,63 +185,95 @@ const uploadAudio = async (req, res) => {
       }
     }
 
-    // Calculate length for current.seq template placeholders.
-    let audioLengthSeconds = null;
-    try {
-      audioLengthSeconds = await getAudioDurationSeconds(filePath);
-    } catch (durationError) {
-      console.error('Failed to detect audio duration for current.seq:', durationError.message);
+    const usesHook = await hasUploadHook(dbFolder);
+    let uploadHook;
+    if (!isWavProcessing && usesHook) {
+      try {
+        uploadHook = await runUploadHook({
+          folderName: dbFolder,
+          fileId,
+          filename,
+          originalName: decodedOriginalName,
+          activePath: filePath,
+          userId: req.user.id
+        });
+      } catch (hookError) {
+        let archived;
+        try {
+          archived = await archiveFile({
+            folderName: dbFolder,
+            activePath: filePath,
+            filename
+          });
+          await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+        } catch (rollbackError) {
+          if (archived) {
+            try {
+              await restoreArchivedFile(archived);
+            } catch (restoreError) {
+              rollbackError.restoreError = restoreError.message;
+            }
+          }
+          console.error('Failed to roll back upload after hook failure:', rollbackError);
+        }
+
+        await logActivity({
+          eventType: 'upload_hook_failure',
+          userId: req.user?.id,
+          username: req.user?.username,
+          ipAddress: getClientIp(req),
+          details: {
+            file_id: fileId,
+            filename: decodedOriginalName,
+            folder: dbFolder,
+            error: hookError.message,
+            archived_path: archived?.archivePath || null
+          }
+        });
+        return res.status(500).json({ error: 'Uppladdningen återställdes eftersom upload.sh misslyckades' });
+      }
     }
 
-    // Write current.seq for regular folders only.
-    try {
-      const publicUploadFolderName = await getPublicUploadFolderName();
-      if (dbFolder !== publicUploadFolderName) {
-        const defaultSeqPathTemplate = await getDefaultSeqPathTemplate();
-        const uploadsRoot = path.join(__dirname, '../../uploads');
-        const folderPath = path.join(uploadsRoot, dbFolder);
-        writeCurrentSeq(folderPath, decodedOriginalName, audioLengthSeconds, {
-          defaultSeqPath: defaultSeqPathTemplate
-        });
+    if (!isWavProcessing && !usesHook) {
+      try {
+        const duration = await getAudioDurationSeconds(filePath);
+        const defaultSeqPath = await getDefaultSeqPathTemplate();
+        writeCurrentSeq(path.dirname(filePath), decodedOriginalName, duration, { defaultSeqPath });
+      } catch (seqError) {
+        if (seqError.code === 'CP1252_ENCODING_ERROR') throw seqError;
+        console.error('Failed to write legacy seq:', seqError);
       }
-    } catch (error) {
-      if (isCp1252EncodingError(error)) {
-        try {
-          await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
-        } catch (rollbackDbError) {
-          console.error('Failed to rollback DB after CP1252 error:', rollbackDbError);
-        }
-
-        try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (rollbackFileError) {
-          console.error('Failed to rollback file after CP1252 error:', rollbackFileError);
-        }
-
-        return res.status(422).json({
-          error: error.userMessage || 'Filnamn eller sökväg innehåller tecken som inte stöds av CP1252.',
-          details: error.message
-        });
-      }
-
-      console.error('Failed to write current.seq:', error);
-      // Don't fail the upload if current.seq writing fails
     }
 
     // If processing requested and file is WAV, start background processing
-    if (shouldProcess && canonicalMimeType === 'audio/wav') {
+    if (isWavProcessing) {
       console.log(`Starting background processing for file ${fileId}`);
       processAudioInBackground(fileId);
     }
 
+    await logActivity({
+      eventType: 'upload_success',
+      userId: req.user?.id,
+      username: req.user?.username,
+      ipAddress: getClientIp(req),
+      details: {
+        filename: req.file?.originalname,
+        stored_filename: req.file?.filename,
+        folder: dbFolder,
+        file_size: req.file?.size,
+        mime_type: canonicalMimeType,
+        hook_deferred_for_processing: isWavProcessing,
+        legacy_seq_flow: !usesHook,
+        hook_stdout: uploadHook?.stdout || null,
+        hook_stderr: uploadHook?.stderr || null
+      }
+    });
+
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.status(201).json({
-      message: 'File uploaded successfully',
+      message: 'Fil uppladdad',
       file: result.rows[0]
     });
-    await logActivity({ eventType: 'upload_success', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: req.file?.originalname, stored_filename: req.file?.filename, folder: req.body?.folder, file_size: req.file?.size, mime_type: canonicalMimeType } });
   } catch (error) {
     console.error('Upload error:', error);
     await logActivity({ eventType: 'upload_failure', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: req.file?.originalname, folder: req.body?.folder, error: error.message } });
@@ -473,75 +493,82 @@ const deleteAudio = async (req, res) => {
       return res.status(403).json({ error: 'Åtkomst nekad' });
     }
 
-    // Delete file from filesystem (try both file_path and folder+filename, but never remove folder)
-    let deleted = false;
-    if (fs.existsSync(file.file_path)) {
-      fs.unlinkSync(file.file_path);
-      deleted = true;
-    }
-    if (!deleted) {
-      // Try to construct path from folder and filename
-      const altPath = file.folder
-        ? path.join('/app/uploads', file.folder, file.filename)
-        : path.join('/app/uploads', file.filename);
-      if (fs.existsSync(altPath)) {
-        fs.unlinkSync(altPath);
-        deleted = true;
-      }
+    if (!file.folder) {
+      return res.status(400).json({ error: 'Filen saknar en giltig mapp för arkivering' });
     }
 
-    // Delete from database
-    await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+    const usesHook = await hasUploadHook(file.folder);
+    const archived = usesHook
+      ? await archiveAndRunDeleteHook({
+        folderName: file.folder,
+        fileId: file.id,
+        filename: file.filename,
+        originalName: file.original_name,
+        activePath: file.file_path,
+        userId: req.user.id
+      })
+      : await archiveFile({
+        folderName: file.folder,
+        activePath: file.file_path,
+        filename: file.filename
+      });
 
-    // If deleted file is currently referenced in seq, remove that reference.
-    // If files remain in the folder, point seq to the most recently uploaded remaining file.
     try {
-      const uploadsRoot = path.join(__dirname, '../../uploads');
-      const folderPath = path.join(uploadsRoot, file.folder || '');
-      const { removeSeqReferenceForFile, clearCurrentSeqFile } = require('../utils/currentSeq');
-      const seqChanged = removeSeqReferenceForFile(folderPath, file.original_name || file.filename);
-
-      const fallbackResult = await pool.query(
-        `SELECT original_name, filename, duration
-           FROM audio_files
-          WHERE folder IS NOT DISTINCT FROM $1
-          ORDER BY uploaded_at DESC, id DESC
-          LIMIT 1`,
-        [file.folder || null]
-      );
-
-      const fallbackFile = fallbackResult.rows[0];
-      if (fallbackFile && seqChanged) {
-        let defaultSeqPath;
-        if (file.folder) {
-          const folderDefaultsResult = await pool.query(
-            'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
-            [file.folder]
-          );
-          defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || undefined;
-        }
-
-        writeCurrentSeq(
-          folderPath,
-          fallbackFile.original_name || fallbackFile.filename,
-          fallbackFile.duration,
-          { defaultSeqPath }
-        );
+      await pool.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+    } catch (databaseError) {
+      try {
+        await restoreArchivedFile(archived);
+      } catch (restoreError) {
+        databaseError.restoreError = restoreError.message;
       }
 
-      if (!fallbackFile) {
-        // If no files remain in folder, seq must be empty.
-        clearCurrentSeqFile(folderPath);
+      throw databaseError;
+    }
+
+    try {
+      const folderPath = path.dirname(file.file_path);
+      const seqChanged = removeSeqReferenceForFile(folderPath, file.original_name || file.filename);
+      if (!usesHook && seqChanged) {
+        const fallback = await pool.query(
+          `SELECT original_name, filename, duration FROM audio_files
+           WHERE folder IS NOT DISTINCT FROM $1 ORDER BY uploaded_at DESC, id DESC LIMIT 1`,
+          [file.folder]
+        );
+        if (fallback.rows[0]) {
+          writeCurrentSeq(
+            folderPath,
+            fallback.rows[0].original_name || fallback.rows[0].filename,
+            fallback.rows[0].duration,
+            { defaultSeqPath: await getDefaultSeqPathTemplate() }
+          );
+        } else {
+          clearCurrentSeqFile(folderPath);
+        }
       }
     } catch (seqError) {
-      console.error('Failed to update seq after delete:', seqError);
+      console.error('Failed to update seq after archive:', seqError);
     }
 
-    res.json({ message: 'File deleted successfully' });
-    await logActivity({ eventType: 'file_delete', userId: req.user?.id, username: req.user?.username, ipAddress: getClientIp(req), details: { filename: file.filename, original_name: file.original_name, folder: file.folder } });
+    await logActivity({
+      eventType: 'file_archived',
+      userId: req.user?.id,
+      username: req.user?.username,
+      ipAddress: getClientIp(req),
+      details: {
+        file_id: file.id,
+        filename: file.filename,
+        original_name: file.original_name,
+        folder: file.folder,
+        archive_path: archived.archivePath,
+        hook_stdout: archived.hook?.stdout || null,
+        hook_stderr: archived.hook?.stderr || null,
+        legacy_seq_flow: !usesHook
+      }
+    });
+    res.json({ message: 'Filen har arkiverats' });
   } catch (error) {
     console.error('Delete error:', error);
-    res.status(500).json({ error: 'Det gick inte att ta bort filen' });
+    res.status(500).json({ error: 'Det gick inte att arkivera filen' });
   }
 };
 
@@ -570,54 +597,6 @@ const updateBroadcastTime = async (req, res) => {
       'UPDATE audio_files SET broadcast_time = $1 WHERE id = $2 RETURNING *',
       [broadcastTime || null, fileId]
     );
-
-    // Write current.seq when a broadcast time is set for regular folders.
-    if (broadcastTime) {
-      try {
-        const { normalizeFolderName } = require('../utils/normalizeFolderName');
-        const uploadsRoot = path.join(__dirname, '../../uploads');
-        const safeFolder = normalizeFolderName(file.folder);
-        const publicUploadFolderName = await getPublicUploadFolderName();
-
-        if (safeFolder === publicUploadFolderName) {
-          return res.json(result.rows[0]);
-        }
-
-        const folderPath = path.join(uploadsRoot, safeFolder);
-
-        let durationSeconds = Number.isFinite(file.duration) ? file.duration : null;
-        if (!Number.isFinite(durationSeconds) && file.file_path) {
-          const audioPath = file.file_path.startsWith('/app')
-            ? file.file_path
-            : path.join(uploadsRoot, file.file_path);
-          try {
-            durationSeconds = await getAudioDurationSeconds(audioPath);
-          } catch (durationError) {
-            console.error('Failed to detect scheduled file duration for current.seq:', durationError.message);
-          }
-        }
-
-        const defaultSeqPath = await getDefaultSeqPathTemplate();
-
-        writeCurrentSeq(folderPath, file.original_name, durationSeconds, {
-          defaultSeqPath
-        });
-      } catch (seqError) {
-        if (isCp1252EncodingError(seqError)) {
-          await pool.query(
-            'UPDATE audio_files SET broadcast_time = $1 WHERE id = $2',
-            [file.broadcast_time || null, fileId]
-          );
-
-          return res.status(422).json({
-            error: seqError.userMessage || 'Filnamn eller sökväg innehåller tecken som inte stöds av CP1252.',
-            details: seqError.message
-          });
-        }
-
-        console.error('Failed to write current.seq on schedule:', seqError);
-      }
-    }
 
     res.json(result.rows[0]);
   } catch (error) {
@@ -679,8 +658,12 @@ const cleanupAbortedUpload = async (req, res) => {
     }
 
     if (fs.existsSync(targetPath)) {
-      fs.unlinkSync(targetPath);
-      return res.json({ cleaned: true });
+      const archived = await archiveFile({
+        folderName: folder,
+        activePath: targetPath,
+        filename: safeFilename
+      });
+      return res.json({ cleaned: true, archivePath: archived.archivePath });
     }
 
     return res.json({ cleaned: false, reason: 'file-not-found' });

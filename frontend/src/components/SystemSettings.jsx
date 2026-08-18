@@ -6,61 +6,32 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Divider,
+  Typography,
   TextField,
-  Typography
+  Divider
 } from '@mui/material';
 import { settingsAPI } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 
-const DEFAULT_SEQ_PATH_EXAMPLE = ['Y:', 'audio_upload', '{foldername}'].join('\\');
-
-function normalizePathSeparators(value) {
-  const input = String(value || '');
-  const uncPrefixMatch = input.match(/^(\\\\|\/\/)/);
-  const uncPrefix = uncPrefixMatch ? uncPrefixMatch[0] : '';
-  const body = uncPrefix ? input.slice(uncPrefix.length) : input;
-
-  return `${uncPrefix}${body.replace(/[\\/]{2,}/g, (match) => match[0])}`;
-}
-
-function sanitizeDefaultSeqPath(value) {
-  return normalizePathSeparators(String(value || '').replace(/[\\/]?\{filename\}\s*$/i, ''));
-}
-
 function SystemSettings() {
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [defaultSeqPathTemplate, setDefaultSeqPathTemplate] = useState('');
   const [syncResult, setSyncResult] = useState(null);
+  const [defaultSeqPathTemplate, setDefaultSeqPathTemplate] = useState('');
   const { success, error: showError } = useToast();
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setLoading(true);
-        const response = await settingsAPI.get();
-        setDefaultSeqPathTemplate(response.data?.defaultSeqPathTemplate || '');
-      } catch (error) {
-        showError('Kunde inte hämta inställningar');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSettings();
+    settingsAPI.get()
+      .then((response) => setDefaultSeqPathTemplate(response.data?.defaultSeqPathTemplate || ''))
+      .catch(() => showError('Kunde inte hämta seq-inställningar'));
   }, [showError]);
 
-  const handleSave = async () => {
+  const saveSeqSettings = async () => {
     try {
-      const payload = {
-        defaultSeqPathTemplate: sanitizeDefaultSeqPath(defaultSeqPathTemplate)
-      };
-      const response = await settingsAPI.update(payload);
+      const response = await settingsAPI.update({ defaultSeqPathTemplate });
       setDefaultSeqPathTemplate(response.data?.defaultSeqPathTemplate || '');
-      success('Inställningar sparade');
+      success('Seq-inställningar sparade');
     } catch (error) {
-      showError(error.response?.data?.error || 'Kunde inte spara inställningar');
+      showError(error.response?.data?.error || 'Kunde inte spara seq-inställningar');
     }
   };
 
@@ -77,41 +48,30 @@ function SystemSettings() {
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
   return (
     <Card>
       <CardContent>
         <Typography variant="h5" sx={{ mb: 2 }}>
           Centrala inställningar
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Detta värde används globalt för seq-fil vid uppladdning.
+        <Typography variant="h6" sx={{ mb: 1 }}>
+          Legacy seq-flöde
         </Typography>
-
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Används endast i mappar där upload.sh saknas. Mappens .tmpl-fil styr seq-innehållet.
+        </Typography>
         <TextField
           fullWidth
           margin="dense"
-          label="Default sökväg"
+          label="Standard sökväg i seq-fil"
           value={defaultSeqPathTemplate}
-          onChange={(e) => setDefaultSeqPathTemplate(sanitizeDefaultSeqPath(e.target.value))}
-          helperText={`Exempel: ${DEFAULT_SEQ_PATH_EXAMPLE}`}
+          onChange={(event) => setDefaultSeqPathTemplate(event.target.value)}
+          helperText={'Exempel: Y:\\audio_upload\\{foldername}'}
         />
-
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="contained" onClick={handleSave}>
-            Spara
-          </Button>
+        <Box sx={{ mt: 1, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="outlined" onClick={saveSeqSettings}>Spara seq-inställning</Button>
         </Box>
-
         <Divider sx={{ my: 3 }} />
-
         <Typography variant="h6" sx={{ mb: 1 }}>
           Synka filer och mappar
         </Typography>

@@ -15,16 +15,7 @@ const { upload, setUploadFolderPath } = require('../middleware/upload');
 
 const router = express.Router();
 
-router.post('/upload', (req, res, next) => {
-  const fs = require('fs');
-  try {
-    fs.appendFileSync('/app/uploads/upload-debug.log', new Date().toISOString() + ' ROUTE /api/audio/upload HIT!\n');
-    fs.appendFileSync('/app/uploads/upload-debug.log', '  Method: ' + req.method + ', Content-Type: ' + req.get('content-type') + '\n');
-    fs.appendFileSync('/app/uploads/upload-debug.log', '  req.files: ' + JSON.stringify(req.files) + ', req.file: ' + JSON.stringify(req.file) + '\n');
-    fs.appendFileSync('/app/uploads/upload-debug.log', '  req.body keys: ' + Object.keys(req.body).join(', ') + '\n');
-  } catch (e) {}
-  next();
-}, authMiddleware, setUploadFolderPath, upload.single('audio'), uploadAudio);
+router.post('/upload', authMiddleware, setUploadFolderPath, upload.single('audio'), uploadAudio);
 router.get('/my-files', authMiddleware, getUserAudioFiles);
 router.get('/all', authMiddleware, adminMiddleware, getAllAudioFiles);
 router.get('/user/:userId', authMiddleware, adminMiddleware, getUserFilesById);

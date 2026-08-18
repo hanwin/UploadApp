@@ -59,7 +59,7 @@ function getDiskFolders(uploadsRoot) {
 
   const entries = fs.readdirSync(uploadsRoot, { withFileTypes: true });
   return entries
-    .filter((entry) => entry.isDirectory())
+    .filter((entry) => entry.isDirectory() && entry.name !== 'arkiv')
     .map((entry) => entry.name)
     .sort((a, b) => a.localeCompare(b, 'sv'));
 }
@@ -274,10 +274,10 @@ async function syncDbWithFilesystem(options = {}) {
     try {
       for (const folderName of missingFoldersInDb) {
         await pool.query(
-          `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist, default_seq_path)
-           VALUES ($1, $2, $3, $4, $5)
+          `INSERT INTO folders (original_name, disk_name, default_mp3_title, default_mp3_artist)
+           VALUES ($1, $2, $3, $4)
            ON CONFLICT (disk_name) DO NOTHING`,
-          [folderName, folderName, null, null, null]
+          [folderName, folderName, null, null]
         );
         summary.insertedFolders += 1;
       }

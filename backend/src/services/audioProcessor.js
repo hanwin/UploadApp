@@ -5,7 +5,16 @@ const fs = require('fs');
 const fsPromises = require('fs').promises;
 const pool = require('../models/db');
 const { writeTags } = require('./mp3Tags');
+const {
+  archiveAndRunDeleteHook,
+  archiveFile,
+  hasUploadHook,
+  restoreArchivedFile,
+  runUploadHook
+} = require('./folderHooks');
+const { logActivity } = require('../utils/activityLogger');
 const { writeCurrentSeq } = require('../utils/currentSeq');
+const { getDefaultSeqPathTemplate } = require('../controllers/settingsController');
 
 const applyTagTemplate = (template, context) => {
   if (!template || typeof template !== 'string') {
@@ -67,8 +76,12 @@ async function processAudioFile(fileId) {
     
     // Generate output filename (replace extension with .mp3)
     const parsedPath = path.parse(file.filename);
-    const outputFilename = `${parsedPath.name}_processed.mp3`;
-    const outputPath = path.join(path.dirname(inputPath), outputFilename);
+    let outputFilename = `${parsedPath.name}_processed.mp3`;
+    let outputPath = path.join(path.dirname(inputPath), outputFilename);
+    if (fs.existsSync(outputPath)) {
+      outputFilename = `${parsedPath.name}_processed-${Date.now()}.mp3`;
+      outputPath = path.join(path.dirname(inputPath), outputFilename);
+    }
     
     // FFmpeg command for radio-quality audio processing:
     // 1. Loudness normalization to -16 LUFS (EBU R128 standard for radio)
@@ -238,7 +251,7 @@ async function processAudioFile(fileId) {
     
     console.log(`[AudioProcessor] Processing complete. Upserting database entry...`);
 
-    // Reuse existing processed row for same output path (overwrite behavior).
+    // Retain compatibility with a pre-existing row for this output path.
     const existingProcessedResult = await client.query(
       `SELECT id
          FROM audio_files
@@ -298,28 +311,62 @@ async function processAudioFile(fileId) {
       processedFileId = insertResult.rows[0].id;
       console.log(`[AudioProcessor] Created new processed DB row ${processedFileId}`);
     }
-    
-    const folderDefaultsResult = await client.query(
-      'SELECT default_seq_path FROM folders WHERE disk_name = $1 LIMIT 1',
-      [file.folder]
-    );
-    const defaultSeqPath = folderDefaultsResult.rows[0]?.default_seq_path || null;
 
-    // Write folder-name.seq.seq with processed filename in folder
-    try {
-      const uploadsRoot = path.join(__dirname, '../../uploads');
-      const folderPath = path.join(uploadsRoot, file.folder);
-      writeCurrentSeq(folderPath, processedDisplayName, duration, {
-        defaultSeqPath
+    const usesHook = await hasUploadHook(file.folder);
+    let processedUploadHook;
+    if (usesHook) try {
+      processedUploadHook = await runUploadHook({
+        folderName: file.folder,
+        fileId: processedFileId,
+        filename: outputFilename,
+        originalName: processedDisplayName,
+        activePath: outputPath,
+        userId: file.user_id
       });
-      console.log(`[AudioProcessor] Updated seq file with ${processedDisplayName}`);
-    } catch (error) {
-      if (error && error.code === 'CP1252_ENCODING_ERROR') {
-        throw error;
+    } catch (hookError) {
+      try {
+        await archiveFile({
+          folderName: file.folder,
+          activePath: outputPath,
+          filename: outputFilename
+        });
+        await client.query('DELETE FROM audio_files WHERE id = $1', [processedFileId]);
+      } catch (rollbackError) {
+        rollbackError.hookError = hookError.message;
+        throw rollbackError;
       }
-      console.error(`[AudioProcessor] Failed to write seq file:`, error);
-      // Don't fail processing if current.seq writing fails
+      await logActivity({
+        eventType: 'upload_hook_failure',
+        userId: file.user_id,
+        details: {
+          file_id: processedFileId,
+          filename: processedDisplayName,
+          folder: file.folder,
+          error: hookError.message,
+          source: 'audio_processing'
+        }
+      });
+      throw hookError;
     }
+    if (!usesHook) {
+      const defaultSeqPath = await getDefaultSeqPathTemplate();
+      writeCurrentSeq(path.dirname(outputPath), processedDisplayName, duration, { defaultSeqPath });
+    }
+
+    await logActivity({
+      eventType: 'upload_success',
+      userId: file.user_id,
+      details: {
+        file_id: processedFileId,
+        filename: processedDisplayName,
+        stored_filename: outputFilename,
+        folder: file.folder,
+        hook_stdout: processedUploadHook?.stdout || null,
+        hook_stderr: processedUploadHook?.stderr || null,
+        legacy_seq_flow: !usesHook,
+        source: 'audio_processing'
+      }
+    });
     
     // Update original file with reference to processed version
     await client.query(
@@ -329,47 +376,76 @@ async function processAudioFile(fileId) {
     
     console.log(`[AudioProcessor] Success! Original file ${fileId} -> Processed file ${processedFileId}`);
     
-    // Emit completion event via WebSocket
+    let originalArchived = false;
     if (file.delete_original_on_success) {
-      // If original will be deleted, emit event with only processed file
-      io.emit('audioProcessingComplete', { 
-        fileId: processedFileId,
-        originalFileId: fileId,
-        status: 'completed',
-        originalDeleted: true,
-        originalName: file.original_name
-      });
-    } else {
-      // If original is kept, emit event with both files
-      io.emit('audioProcessingComplete', { 
-        fileId: processedFileId,
-        originalFileId: fileId,
-        status: 'completed',
-        originalDeleted: false,
-        originalName: file.original_name
-      });
-    }
-    
-    // Check if original file should be deleted
-    if (file.delete_original_on_success) {
-      console.log(`[AudioProcessor] Deleting original file ${fileId} as requested...`);
+      console.log(`[AudioProcessor] Archiving original file ${fileId} as requested...`);
       
       try {
-        // Delete physical file
-        const fileExists = await fsPromises.access(inputPath).then(() => true).catch(() => false);
-        if (fileExists) {
-          await fsPromises.unlink(inputPath);
-          console.log(`[AudioProcessor] Physical file deleted: ${inputPath}`);
+        const originalUsesHook = await hasUploadHook(file.folder);
+        const archived = originalUsesHook ? await archiveAndRunDeleteHook({
+          folderName: file.folder,
+          fileId,
+          filename: file.filename,
+          originalName: file.original_name,
+          activePath: inputPath,
+          userId: file.user_id
+        }) : await archiveFile({
+          folderName: file.folder,
+          activePath: inputPath,
+          filename: file.filename
+        });
+
+        try {
+          await client.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
+        } catch (databaseError) {
+          try {
+            await restoreArchivedFile(archived);
+          } catch (restoreError) {
+            databaseError.restoreError = restoreError.message;
+          }
+          throw databaseError;
         }
-        
-        // Delete database record
-        await client.query('DELETE FROM audio_files WHERE id = $1', [fileId]);
-        console.log(`[AudioProcessor] Database record deleted for file ${fileId}`);
+
+        await logActivity({
+          eventType: 'file_archived',
+          userId: file.user_id,
+          details: {
+            file_id: fileId,
+            filename: file.filename,
+            original_name: file.original_name,
+            folder: file.folder,
+            archive_path: archived.archivePath,
+            hook_stdout: archived.hook?.stdout || null,
+            hook_stderr: archived.hook?.stderr || null,
+            legacy_seq_flow: !originalUsesHook,
+            source: 'audio_processing'
+          }
+        });
+        console.log(`[AudioProcessor] Original file archived: ${archived.archivePath}`);
+        originalArchived = true;
       } catch (deleteError) {
-        console.error(`[AudioProcessor] Error deleting original file ${fileId}:`, deleteError);
-        // Don't throw error - processed file is still created successfully
+        console.error(`[AudioProcessor] Error archiving original file ${fileId}:`, deleteError);
+        await logActivity({
+          eventType: 'file_archive_failure',
+          userId: file.user_id,
+          details: {
+            file_id: fileId,
+            filename: file.filename,
+            folder: file.folder,
+            error: deleteError.message,
+            source: 'audio_processing'
+          }
+        });
       }
     }
+
+    io.emit('audioProcessingComplete', {
+      fileId: processedFileId,
+      originalFileId: fileId,
+      status: 'completed',
+      originalDeleted: originalArchived,
+      originalName: file.original_name
+    });
     
     return processedFileId;
     
